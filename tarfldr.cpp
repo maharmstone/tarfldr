@@ -11,7 +11,7 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
-class shell_folder : public IShellFolder, public IPersistFolder3 {
+class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList {
 public:
     // IUnknown
 
@@ -20,6 +20,8 @@ public:
             *ppv = static_cast<IShellFolder*>(this);
         else if (iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3)
             *ppv = static_cast<IPersistFolder3*>(this);
+        else if (iid == IID_IPersistIDList)
+            *ppv = static_cast<IPersistIDList*>(this);
         else {
             __asm("int $3");
             *ppv = nullptr;
@@ -136,6 +138,20 @@ public:
     }
 
     HRESULT __stdcall GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    // IPersistIDList
+
+    HRESULT __stdcall SetIDList(PCIDLIST_ABSOLUTE pidl) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    HRESULT __stdcall GetIDList(PIDLIST_ABSOLUTE* ppidl) {
         // FIXME
         __asm("int $3");
         return E_NOTIMPL;
