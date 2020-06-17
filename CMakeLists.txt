@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(tarfldr)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
 set(SRC_FILES tarfldr.cpp
 	tarfldr.def)
 
@@ -9,7 +13,7 @@ add_library(tarfldr SHARED ${SRC_FILES})
 
 set_target_properties(tarfldr PROPERTIES PREFIX "")
 
-# target_link_libraries(explorer advapi32 gdi32 user32 comctl32 ole32 oleaut32 shell32 shlwapi shdocvw version uxtheme msvcrt kernel32 ntdll)
+target_link_libraries(tarfldr comctl32)
 target_link_options(tarfldr PUBLIC -static-libgcc)
 
 target_compile_options(tarfldr PUBLIC -gcodeview)

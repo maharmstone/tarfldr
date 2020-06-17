@@ -3,13 +3,20 @@
 using namespace std;
 
 static const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
+static const WCHAR class_name[] = L"tarfldr_shellview";
 
 LONG objs_loaded = 0;
+HINSTANCE instance = nullptr;
 
 // FIXME - installer
 
 extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
+}
+
+shell_view::~shell_view() {
+    if (shell_browser)
+        shell_browser->Release();
 }
 
 HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
@@ -75,11 +82,102 @@ HRESULT shell_view::Refresh() {
     return E_NOTIMPL;
 }
 
+LRESULT shell_view::wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam) {
+    // FIXME
+
+    return DefWindowProcW(wnd, uMessage, wParam, lParam);
+}
+
+static LRESULT CALLBACK shell_view_wndproc_stub(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam) {
+    if (uMessage == WM_NCCREATE) {
+        auto lpcs = (LPCREATESTRUCTW)lParam;
+        auto sv = (shell_view*)lpcs->lpCreateParams;
+
+        SetWindowLongPtrW(hWnd, GWLP_USERDATA, (ULONG_PTR)sv);
+
+        return DefWindowProcW(hWnd, uMessage, wParam, lParam);
+    }
+
+    auto sv = (shell_view*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+
+    return sv->wndproc(uMessage, wParam, lParam);
+}
+
 HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS pfs, IShellBrowser* psb,
                                      RECT* prcView, HWND* phWnd) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    try {
+        INITCOMMONCONTROLSEX icex;
+        WNDCLASSW wndclass;
+
+        if (!psb || wnd)
+            return E_UNEXPECTED;
+
+        if (shell_browser)
+            shell_browser->Release();
+
+        shell_browser = psb;
+
+        if (shell_browser)
+            shell_browser->AddRef();
+
+        icex.dwSize = sizeof(icex);
+        icex.dwICC = ICC_LISTVIEW_CLASSES;
+        InitCommonControlsEx(&icex);
+
+        *phWnd = nullptr;
+
+        // FIXME - store view mode and flags
+
+        shell_browser->GetWindow(&wnd_parent);
+
+        // FIXME - get IID_ICommDlgBrowser of shell_browser
+
+        if (!GetClassInfoW(instance, class_name, &wndclass)) {
+            wndclass.style = CS_HREDRAW | CS_VREDRAW;
+            wndclass.lpfnWndProc = shell_view_wndproc_stub;
+            wndclass.cbClsExtra = 0;
+            wndclass.cbWndExtra = 0;
+            wndclass.hInstance = instance;
+            wndclass.hIcon = 0;
+            wndclass.hCursor = LoadCursorW(0, (LPWSTR)IDC_ARROW);
+            wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+            wndclass.lpszMenuName = nullptr;
+            wndclass.lpszClassName = class_name;
+
+            if (!RegisterClassW(&wndclass))
+                throw last_error("RegisterClassW", GetLastError());
+        }
+
+        wnd = CreateWindowExW(0, class_name, nullptr, WS_CHILD | WS_TABSTOP,
+                              prcView->left, prcView->top,
+                              prcView->right - prcView->left,
+                              prcView->bottom - prcView->top,
+                              wnd_parent, 0, instance, this);
+
+        // FIXME - fiddle about with toolbar
+
+        if (!wnd) {
+            auto le = GetLastError();
+
+            shell_browser->Release();
+            shell_browser = nullptr;
+
+            throw last_error("CreateWindowExW", le);
+        }
+
+        SetWindowPos(wnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        UpdateWindow(wnd);
+
+        *phWnd = wnd;
+    } catch (const exception& e) {
+        auto msg = utf8_to_utf16(e.what());
+
+        MessageBoxW(0, (WCHAR*)msg.c_str(), L"Error", MB_ICONERROR);
+
+        return E_FAIL;
+    }
+
+    return S_OK;
 }
 
 HRESULT shell_view::DestroyViewWindow() {
@@ -358,5 +456,8 @@ extern "C" STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
 }
 
 extern "C" BOOL APIENTRY DllMain(HANDLE hModule, DWORD dwReason, void* lpReserved) {
+    if (dwReason == DLL_PROCESS_ATTACH)
+        instance = (HINSTANCE)hModule;
+
     return true;
 }
