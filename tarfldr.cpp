@@ -12,13 +12,15 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
-HRESULT __stdcall shell_folder::QueryInterface(REFIID iid, void** ppv) {
+HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellFolder)
         *ppv = static_cast<IShellFolder*>(this);
     else if (iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3)
         *ppv = static_cast<IPersistFolder3*>(this);
     else if (iid == IID_IPersistIDList)
         *ppv = static_cast<IPersistIDList*>(this);
+    else if (iid == IID_IObjectWithFolderEnumMode)
+        *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
     else {
         __asm("int $3");
         *ppv = nullptr;
@@ -30,11 +32,11 @@ HRESULT __stdcall shell_folder::QueryInterface(REFIID iid, void** ppv) {
     return S_OK;
 }
 
-ULONG __stdcall shell_folder::AddRef() {
+ULONG shell_folder::AddRef() {
     return InterlockedIncrement(&refcount);
 }
 
-ULONG __stdcall shell_folder::Release() {
+ULONG shell_folder::Release() {
     LONG rc = InterlockedDecrement(&refcount);
 
     if (rc == 0)
@@ -43,86 +45,86 @@ ULONG __stdcall shell_folder::Release() {
     return rc;
 }
 
-HRESULT __stdcall shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
-                                                 PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes) {
+HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
+                                       PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList **ppenumIDList) {
+HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList **ppenumIDList) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
+HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
+HRESULT shell_folder::BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
+HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
+HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut) {
+HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
-                                              UINT *rgfReserved, void **ppv) {
+HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
+                                    UINT *rgfReserved, void **ppv) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET *pName) {
+HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET *pName) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
-                                          PITEMID_CHILD *ppidlOut) {
+HRESULT shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
+                                PITEMID_CHILD *ppidlOut) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::GetClassID(CLSID* pClassID) {
+HRESULT shell_folder::GetClassID(CLSID* pClassID) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::Initialize(PCIDLIST_ABSOLUTE pidl) {
+HRESULT shell_folder::Initialize(PCIDLIST_ABSOLUTE pidl) {
     return InitializeEx(nullptr, pidl, nullptr);
 }
 
-HRESULT __stdcall shell_folder::GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
+HRESULT shell_folder::GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti) {
+HRESULT shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti) {
     item_id_buf.resize(offsetof(SHITEMID, abID) + pidlRoot->mkid.cb);
     memcpy(item_id_buf.data(), &pidlRoot->mkid, item_id_buf.size());
 
@@ -131,19 +133,31 @@ HRESULT __stdcall shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pi
     return S_OK;
 }
 
-HRESULT __stdcall shell_folder::GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
+HRESULT shell_folder::GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::SetIDList(PCIDLIST_ABSOLUTE pidl) {
+HRESULT shell_folder::SetIDList(PCIDLIST_ABSOLUTE pidl) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;
 }
 
-HRESULT __stdcall shell_folder::GetIDList(PIDLIST_ABSOLUTE* ppidl) {
+HRESULT shell_folder::GetIDList(PIDLIST_ABSOLUTE* ppidl) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_folder::SetMode(FOLDER_ENUM_MODE feMode) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE *pfeMode) {
     // FIXME
     __asm("int $3");
     return E_NOTIMPL;

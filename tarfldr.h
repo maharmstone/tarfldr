@@ -1,9 +1,11 @@
+#define _WIN32_WINNT 0x0601 // Windows 7
+
 #include <windows.h>
 #include <shobjidl.h>
 #include <vector>
 #include <stdint.h>
 
-class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList {
+class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
 public:
     // IUnknown
 
@@ -39,6 +41,11 @@ public:
 
     HRESULT __stdcall SetIDList(PCIDLIST_ABSOLUTE pidl);
     HRESULT __stdcall GetIDList(PIDLIST_ABSOLUTE* ppidl);
+
+    // IObjectWithFolderEnumMode
+
+    HRESULT __stdcall SetMode(FOLDER_ENUM_MODE feMode);
+    HRESULT __stdcall GetMode(FOLDER_ENUM_MODE *pfeMode);
 
 private:
     LONG refcount = 0;
