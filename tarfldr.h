@@ -5,6 +5,35 @@
 #include <vector>
 #include <stdint.h>
 
+class shell_view : public IShellView {
+public:
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // IShellView
+
+    HRESULT __stdcall GetWindow(HWND *phwnd);
+    HRESULT __stdcall ContextSensitiveHelp(WINBOOL fEnterMode);
+    HRESULT __stdcall TranslateAccelerator(MSG *pmsg);
+    HRESULT __stdcall EnableModeless(WINBOOL fEnable);
+    HRESULT __stdcall UIActivate(UINT uState);
+    HRESULT __stdcall Refresh();
+    HRESULT __stdcall CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS pfs, IShellBrowser* psb,
+                                       RECT* prcView, HWND* phWnd);
+    HRESULT __stdcall DestroyViewWindow();
+    HRESULT __stdcall GetCurrentInfo(LPFOLDERSETTINGS pfs);
+    HRESULT __stdcall AddPropertySheetPages(DWORD dwReserved, LPFNSVADDPROPSHEETPAGE pfn, LPARAM lparam);
+    HRESULT __stdcall SaveViewState();
+    HRESULT __stdcall SelectItem(PCUITEMID_CHILD pidlItem, SVSIF uFlags);
+    HRESULT __stdcall GetItemObject(UINT uItem, REFIID riid, void** ppv);
+
+private:
+    LONG refcount = 0;
+};
+
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
 public:
     // IUnknown

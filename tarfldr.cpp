@@ -12,6 +12,112 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
+HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_IShellView)
+        *ppv = static_cast<IShellView*>(this);
+    else {
+        __asm("int $3");
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    reinterpret_cast<IUnknown*>(*ppv)->AddRef();
+
+    return S_OK;
+}
+
+ULONG shell_view::AddRef() {
+    return InterlockedIncrement(&refcount);
+}
+
+ULONG shell_view::Release() {
+    LONG rc = InterlockedDecrement(&refcount);
+
+    if (rc == 0)
+        delete this;
+
+    return rc;
+}
+
+HRESULT shell_view::GetWindow(HWND *phwnd) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::ContextSensitiveHelp(WINBOOL fEnterMode) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::TranslateAccelerator(MSG *pmsg) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::EnableModeless(WINBOOL fEnable) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::UIActivate(UINT uState) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::Refresh() {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS pfs, IShellBrowser* psb,
+                                     RECT* prcView, HWND* phWnd) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::DestroyViewWindow() {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::GetCurrentInfo(LPFOLDERSETTINGS pfs) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::AddPropertySheetPages(DWORD dwReserved, LPFNSVADDPROPSHEETPAGE pfn, LPARAM lparam) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::SaveViewState() {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::SelectItem(PCUITEMID_CHILD pidlItem, SVSIF uFlags) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
+HRESULT shell_view::GetItemObject(UINT uItem, REFIID riid, void** ppv) {
+    // FIXME
+    __asm("int $3");
+    return E_NOTIMPL;
+}
+
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellFolder)
         *ppv = static_cast<IShellFolder*>(this);
@@ -77,9 +183,16 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
 }
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    if (riid == IID_IUnknown || riid == IID_IShellView) {
+        shell_view* sv = new shell_view;
+        if (!sv)
+            return E_OUTOFMEMORY;
+
+        return sv->QueryInterface(riid, ppv);
+    }
+
+    *ppv = nullptr;
+    return E_NOINTERFACE;
 }
 
 HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut) {
