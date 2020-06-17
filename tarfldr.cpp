@@ -1,5 +1,9 @@
 #include <windows.h>
 #include <shobjidl.h>
+#include <vector>
+#include <stdint.h>
+
+using namespace std;
 
 static const GUID CLSID_TarFldr = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
 
@@ -120,9 +124,7 @@ public:
     }
 
     HRESULT __stdcall Initialize(PCIDLIST_ABSOLUTE pidl) {
-        // FIXME
-        __asm("int $3");
-        return E_NOTIMPL;
+        return InitializeEx(nullptr, pidl, nullptr);
     }
 
     HRESULT __stdcall GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
@@ -132,9 +134,12 @@ public:
     }
 
     HRESULT __stdcall InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti) {
-        // FIXME
-        __asm("int $3");
-        return E_NOTIMPL;
+        item_id_buf.resize(offsetof(SHITEMID, abID) + pidlRoot->mkid.cb);
+        memcpy(item_id_buf.data(), &pidlRoot->mkid, item_id_buf.size());
+
+        item_id = (SHITEMID*)item_id_buf.data();
+
+        return S_OK;
     }
 
     HRESULT __stdcall GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
@@ -159,6 +164,8 @@ public:
 
 private:
     LONG refcount = 0;
+    vector<uint8_t> item_id_buf;
+    SHITEMID* item_id = nullptr;
 };
 
 class factory : public IClassFactory {
