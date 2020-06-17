@@ -16,9 +16,10 @@ public:
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
-        if (iid == IID_IUnknown || iid == IID_IClassFactory)
+        if (iid == IID_IUnknown || iid == IID_IShellFolder)
             *ppv = static_cast<IShellFolder*>(this);
         else {
+            __asm("int $3");
             *ppv = nullptr;
             return E_NOINTERFACE;
         }
@@ -46,53 +47,63 @@ public:
     HRESULT __stdcall ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
                                        PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList **ppenumIDList) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
                                     UINT *rgfReserved, void **ppv) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET *pName) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
     HRESULT __stdcall SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
                                 PITEMID_CHILD *ppidlOut) {
         // FIXME
+        __asm("int $3");
         return E_NOTIMPL;
     }
 
@@ -148,6 +159,8 @@ public:
 
             return sf->QueryInterface(iid, ppv);
         }
+
+        __asm("int $3");
 
         *ppv = nullptr;
         return E_NOINTERFACE;
