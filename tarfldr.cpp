@@ -11,13 +11,15 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
-class shell_folder : public IShellFolder {
+class shell_folder : public IShellFolder, public IPersistFolder3 {
 public:
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
         if (iid == IID_IUnknown || iid == IID_IShellFolder)
             *ppv = static_cast<IShellFolder*>(this);
+        else if (iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3)
+            *ppv = static_cast<IPersistFolder3*>(this);
         else {
             __asm("int $3");
             *ppv = nullptr;
@@ -102,6 +104,38 @@ public:
 
     HRESULT __stdcall SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
                                 PITEMID_CHILD *ppidlOut) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    // IPersistFolder3
+
+    HRESULT __stdcall GetClassID(CLSID* pClassID) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    HRESULT __stdcall Initialize(PCIDLIST_ABSOLUTE pidl) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    HRESULT __stdcall GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    HRESULT __stdcall InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti) {
+        // FIXME
+        __asm("int $3");
+        return E_NOTIMPL;
+    }
+
+    HRESULT __stdcall GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
         // FIXME
         __asm("int $3");
         return E_NOTIMPL;
