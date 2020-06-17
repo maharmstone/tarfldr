@@ -2,7 +2,7 @@
 
 using namespace std;
 
-static const GUID CLSID_TarFldr = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
+static const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
 
 LONG objs_loaded = 0;
 
@@ -109,9 +109,12 @@ HRESULT shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName
 }
 
 HRESULT shell_folder::GetClassID(CLSID* pClassID) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    if (!pClassID)
+        return E_POINTER;
+
+    *pClassID = CLSID_TarFolder;
+
+    return S_OK;
 }
 
 HRESULT shell_folder::Initialize(PCIDLIST_ABSOLUTE pidl) {
@@ -227,7 +230,7 @@ private:
 };
 
 extern "C" STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
-    if (rclsid == CLSID_TarFldr) {
+    if (rclsid == CLSID_TarFolder) {
         factory* fact = new factory;
         if (!fact)
             return E_OUTOFMEMORY;
