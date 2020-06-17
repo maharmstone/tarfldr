@@ -51,4 +51,5 @@ private:
     LONG refcount = 0;
     std::vector<uint8_t> item_id_buf;
     SHITEMID* item_id = nullptr;
+    FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
 };

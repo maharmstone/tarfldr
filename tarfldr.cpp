@@ -155,15 +155,18 @@ HRESULT shell_folder::GetIDList(PIDLIST_ABSOLUTE* ppidl) {
 }
 
 HRESULT shell_folder::SetMode(FOLDER_ENUM_MODE feMode) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    folder_enum_mode = feMode;
+
+    return S_OK;
 }
 
-HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE *pfeMode) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE* pfeMode) {
+    if (!pfeMode)
+        return E_POINTER;
+
+    *pfeMode = folder_enum_mode;
+
+    return S_OK;
 }
 
 class factory : public IClassFactory {
