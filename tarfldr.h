@@ -45,6 +45,7 @@ public:
 
 private:
     void on_create();
+    void on_size(unsigned int width, unsigned int height);
 
     LONG refcount = 0;
     IShellBrowser* shell_browser = nullptr;

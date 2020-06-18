@@ -121,6 +121,19 @@ void shell_view::on_create() {
 
         // FIXME - create columns
         // FIXME - populate
+
+        {
+            LVITEMW item;
+
+            item.mask = LVIF_TEXT;
+            item.iItem = 0;
+            item.iSubItem = 0;
+            item.lParam = 0;
+            item.pszText = L"hello";
+            item.iImage = 0;
+
+            SendMessageW(wnd_list, LVM_INSERTITEMW, 0, (LPARAM)&item);
+        }
     } catch (const exception& e) {
         auto msg = utf8_to_utf16(e.what());
 
@@ -128,10 +141,21 @@ void shell_view::on_create() {
     }
 }
 
+void shell_view::on_size(unsigned int width, unsigned int height) {
+    if (!wnd_list)
+        return;
+
+    MoveWindow(wnd_list, 0, 0, width, height, true);
+}
+
 LRESULT shell_view::wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam) {
     switch (uMessage) {
         case WM_CREATE:
             on_create();
+            return 0;
+
+        case WM_SIZE:
+            on_size(LOWORD(lParam), HIWORD(lParam));
             return 0;
     }
 
