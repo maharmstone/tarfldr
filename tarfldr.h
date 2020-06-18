@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <fmt/format.h>
 
-class shell_view : public IShellView {
+class shell_view : public IShellView2 {
 public:
     virtual ~shell_view();
 
@@ -18,7 +18,7 @@ public:
     ULONG __stdcall AddRef();
     ULONG __stdcall Release();
 
-    // IShellView
+    // IShellView2
 
     HRESULT __stdcall GetWindow(HWND *phwnd);
     HRESULT __stdcall ContextSensitiveHelp(WINBOOL fEnterMode);
@@ -34,6 +34,10 @@ public:
     HRESULT __stdcall SaveViewState();
     HRESULT __stdcall SelectItem(PCUITEMID_CHILD pidlItem, SVSIF uFlags);
     HRESULT __stdcall GetItemObject(UINT uItem, REFIID riid, void** ppv);
+    HRESULT __stdcall GetView(SHELLVIEWID *pvid, ULONG uView);
+    HRESULT __stdcall CreateViewWindow2(LPSV2CVW2_PARAMS lpParams);
+    HRESULT __stdcall HandleRename(PCUITEMID_CHILD pidlNew);
+    HRESULT __stdcall SelectAndPositionItem(PCUITEMID_CHILD pidlItem, UINT uFlags, POINT *ppt);
 
     LRESULT wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam);
 

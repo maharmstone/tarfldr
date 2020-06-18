@@ -22,8 +22,8 @@ shell_view::~shell_view() {
 }
 
 HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
-    if (iid == IID_IUnknown || iid == IID_IShellView)
-        *ppv = static_cast<IShellView*>(this);
+    if (iid == IID_IUnknown || iid == IID_IShellView || iid == IID_IShellView2)
+        *ppv = static_cast<IShellView2*>(this);
     else {
         string msg = fmt::format("shell_view::QueryInterface: unsupported interface {}", iid);
 
@@ -194,6 +194,22 @@ HRESULT shell_view::SelectItem(PCUITEMID_CHILD pidlItem, SVSIF uFlags) {
 }
 
 HRESULT shell_view::GetItemObject(UINT uItem, REFIID riid, void** ppv) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetView(SHELLVIEWID *pvid, ULONG uView) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::CreateViewWindow2(LPSV2CVW2_PARAMS lpParams) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::HandleRename(PCUITEMID_CHILD pidlNew) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SelectAndPositionItem(PCUITEMID_CHILD pidlItem, UINT uFlags, POINT *ppt) {
     UNIMPLEMENTED; // FIXME
 }
 
