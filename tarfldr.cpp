@@ -174,7 +174,21 @@ HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS 
 }
 
 HRESULT shell_view::DestroyViewWindow() {
-    UNIMPLEMENTED; // FIXME
+    if (!wnd)
+        return S_OK;
+
+    UIActivate(SVUIA_DEACTIVATE);
+
+    DestroyWindow(wnd);
+
+    if (shell_browser) {
+        shell_browser->Release();
+        shell_browser = nullptr;
+    }
+
+    wnd = nullptr;
+
+    return S_OK;
 }
 
 HRESULT shell_view::GetCurrentInfo(LPFOLDERSETTINGS pfs) {
