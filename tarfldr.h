@@ -41,10 +41,15 @@ public:
 
     LRESULT wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam);
 
+    HWND wnd = nullptr;
+
 private:
+    void on_create();
+
     LONG refcount = 0;
     IShellBrowser* shell_browser = nullptr;
-    HWND wnd = nullptr, wnd_parent = nullptr;
+    HWND wnd_parent = nullptr, wnd_list = nullptr;
+    unsigned int view_mode, flags;
 };
 
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {

@@ -75,8 +75,65 @@ HRESULT shell_view::Refresh() {
     UNIMPLEMENTED; // FIXME
 }
 
+void shell_view::on_create() {
+    try {
+        DWORD style, exstyle;
+
+        style = WS_TABSTOP | WS_VISIBLE | WS_CHILDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
+                LVS_SHAREIMAGELISTS | LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_AUTOARRANGE;
+        exstyle = WS_EX_CLIENTEDGE;
+
+        switch (view_mode) {
+            case FVM_ICON:
+                style |= LVS_ICON;
+            break;
+
+            case FVM_DETAILS:
+                style |= LVS_REPORT;
+            break;
+
+            case FVM_SMALLICON:
+                style |= LVS_SMALLICON;
+            break;
+
+            case FVM_LIST:
+                style |= LVS_LIST;
+            break;
+        }
+
+        if (flags & FWF_AUTOARRANGE)
+            style |= LVS_AUTOARRANGE;
+
+        if (flags & FWF_DESKTOP)
+            flags |= FWF_NOCLIENTEDGE | FWF_NOSCROLL;
+
+        if (flags & FWF_SINGLESEL)
+            style |= LVS_SINGLESEL;
+
+        if (flags & FWF_NOCLIENTEDGE)
+            exstyle &= ~WS_EX_CLIENTEDGE;
+
+        wnd_list = CreateWindowExW(exstyle, WC_LISTVIEWW, nullptr, style, 0, 0, 0, 0,
+                                   wnd, nullptr, instance, nullptr);
+
+        if (!wnd_list)
+            throw last_error("CreateWindowExW", GetLastError());
+
+        // FIXME - create columns
+        // FIXME - populate
+    } catch (const exception& e) {
+        auto msg = utf8_to_utf16(e.what());
+
+        MessageBoxW(0, (WCHAR*)msg.c_str(), L"Error", MB_ICONERROR);
+    }
+}
+
 LRESULT shell_view::wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam) {
-    // FIXME
+    switch (uMessage) {
+        case WM_CREATE:
+            on_create();
+            return 0;
+    }
 
     return DefWindowProcW(wnd, uMessage, wParam, lParam);
 }
@@ -87,6 +144,7 @@ static LRESULT CALLBACK shell_view_wndproc_stub(HWND hWnd, UINT uMessage, WPARAM
         auto sv = (shell_view*)lpcs->lpCreateParams;
 
         SetWindowLongPtrW(hWnd, GWLP_USERDATA, (ULONG_PTR)sv);
+        sv->wnd = hWnd;
 
         return DefWindowProcW(hWnd, uMessage, wParam, lParam);
     }
@@ -140,6 +198,9 @@ HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS 
             if (!RegisterClassW(&wndclass))
                 throw last_error("RegisterClassW", GetLastError());
         }
+
+        view_mode = pfs->ViewMode;
+        flags = pfs->fFlags;
 
         wnd = CreateWindowExW(0, class_name, nullptr, WS_CHILD | WS_TABSTOP,
                               prcView->left, prcView->top,
