@@ -8,6 +8,8 @@ static const WCHAR class_name[] = L"tarfldr_shellview";
 LONG objs_loaded = 0;
 HINSTANCE instance = nullptr;
 
+#define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + " stub"s).c_str()); return E_NOTIMPL;
+
 // FIXME - installer
 
 extern "C" STDAPI DllCanUnloadNow(void) {
@@ -23,7 +25,10 @@ HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellView)
         *ppv = static_cast<IShellView*>(this);
     else {
-        __asm("int $3");
+        string msg = fmt::format("shell_view::QueryInterface: unsupported interface {}", iid);
+
+        OutputDebugStringA(msg.c_str());
+
         *ppv = nullptr;
         return E_NOINTERFACE;
     }
@@ -47,39 +52,27 @@ ULONG shell_view::Release() {
 }
 
 HRESULT shell_view::GetWindow(HWND *phwnd) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::ContextSensitiveHelp(WINBOOL fEnterMode) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::TranslateAccelerator(MSG *pmsg) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::EnableModeless(WINBOOL fEnable) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::UIActivate(UINT uState) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::Refresh() {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 LRESULT shell_view::wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam) {
@@ -181,39 +174,27 @@ HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS 
 }
 
 HRESULT shell_view::DestroyViewWindow() {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::GetCurrentInfo(LPFOLDERSETTINGS pfs) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::AddPropertySheetPages(DWORD dwReserved, LPFNSVADDPROPSHEETPAGE pfn, LPARAM lparam) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::SaveViewState() {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::SelectItem(PCUITEMID_CHILD pidlItem, SVSIF uFlags) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_view::GetItemObject(UINT uItem, REFIID riid, void** ppv) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
@@ -226,7 +207,10 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     else if (iid == IID_IObjectWithFolderEnumMode)
         *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
     else {
-        __asm("int $3");
+        string msg = fmt::format("shell_folder::QueryInterface: unsupported interface {}", iid);
+
+        OutputDebugStringA(msg.c_str());
+
         *ppv = nullptr;
         return E_NOINTERFACE;
     }
@@ -251,33 +235,23 @@ ULONG shell_folder::Release() {
 
 HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
                                        PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList **ppenumIDList) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
@@ -294,29 +268,21 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
 }
 
 HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
                                     UINT *rgfReserved, void **ppv) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET *pName) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
                                 PITEMID_CHILD *ppidlOut) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::GetClassID(CLSID* pClassID) {
@@ -333,9 +299,7 @@ HRESULT shell_folder::Initialize(PCIDLIST_ABSOLUTE pidl) {
 }
 
 HRESULT shell_folder::GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti) {
@@ -348,21 +312,15 @@ HRESULT shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, co
 }
 
 HRESULT shell_folder::GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::SetIDList(PCIDLIST_ABSOLUTE pidl) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::GetIDList(PIDLIST_ABSOLUTE* ppidl) {
-    // FIXME
-    __asm("int $3");
-    return E_NOTIMPL;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_folder::SetMode(FOLDER_ENUM_MODE feMode) {
@@ -429,7 +387,9 @@ public:
             return sf->QueryInterface(iid, ppv);
         }
 
-        __asm("int $3");
+        string msg = fmt::format("factor::CreateInstance: unsupported interface {}", iid);
+
+        OutputDebugStringA(msg.c_str());
 
         *ppv = nullptr;
         return E_NOINTERFACE;

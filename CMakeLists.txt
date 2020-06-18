@@ -11,9 +11,12 @@ set(SRC_FILES tarfldr.cpp
 
 add_library(tarfldr SHARED ${SRC_FILES})
 
+find_package(fmt REQUIRED)
+
 set_target_properties(tarfldr PROPERTIES PREFIX "")
 
 target_link_libraries(tarfldr comctl32)
+target_link_libraries(tarfldr fmt::fmt-header-only)
 target_link_options(tarfldr PUBLIC -static-libgcc)
 
 target_compile_options(tarfldr PUBLIC -gcodeview)

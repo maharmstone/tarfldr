@@ -6,6 +6,7 @@
 #include <vector>
 #include <stdexcept>
 #include <stdint.h>
+#include <fmt/format.h>
 
 class shell_view : public IShellView {
 public:
@@ -168,4 +169,25 @@ public:
 
 private:
     std::string msg;
+};
+
+template<>
+struct fmt::formatter<GUID> {
+    constexpr auto parse(format_parse_context& ctx) {
+            auto it = ctx.begin(), end = ctx.end();
+
+            if (*it != '}')
+                    throw format_error("invalid format");
+
+            it++;
+
+            return it;
+    }
+
+    template<typename format_context>
+    auto format(const GUID& g, format_context& ctx) {
+            return format_to(ctx.out(), "{{{:08x}-{:04x}-{:04x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}",
+                             g.Data1, g.Data2, g.Data3, g.Data4[0], g.Data4[1], g.Data4[2], g.Data4[3], g.Data4[4],
+                             g.Data4[5], g.Data4[6], g.Data4[7]);
+    }
 };
