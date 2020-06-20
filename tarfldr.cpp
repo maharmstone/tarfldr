@@ -83,22 +83,35 @@ void shell_view::on_create() {
                 LVS_SHAREIMAGELISTS | LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_AUTOARRANGE;
         exstyle = WS_EX_CLIENTEDGE;
 
-        switch (view_mode) {
-            case FVM_ICON:
+        if (view_id) {
+            const auto& vid = view_id.value();
+
+            if (vid == VID_LargeIcons)
                 style |= LVS_ICON;
-            break;
-
-            case FVM_DETAILS:
-                style |= LVS_REPORT;
-            break;
-
-            case FVM_SMALLICON:
+            else if (vid == VID_SmallIcons)
                 style |= LVS_SMALLICON;
-            break;
-
-            case FVM_LIST:
+            else if (vid == VID_List)
                 style |= LVS_LIST;
-            break;
+            else if (vid == VID_Details)
+                style |= LVS_REPORT;
+        } else {
+            switch (view_mode) {
+                case FVM_ICON:
+                    style |= LVS_ICON;
+                break;
+
+                case FVM_DETAILS:
+                    style |= LVS_REPORT;
+                break;
+
+                case FVM_SMALLICON:
+                    style |= LVS_SMALLICON;
+                break;
+
+                case FVM_LIST:
+                    style |= LVS_LIST;
+                break;
+            }
         }
 
         if (flags & FWF_AUTOARRANGE)
@@ -260,7 +273,7 @@ HRESULT shell_view::GetItemObject(UINT uItem, REFIID riid, void** ppv) {
 
 HRESULT shell_view::GetView(SHELLVIEWID *pvid, ULONG uView) {
     if (uView == SV2GV_CURRENTVIEW) {
-        *pvid = view_id;
+        *pvid = view_id.value();
         return S_OK;
     } else if (uView == SV2GV_DEFAULTVIEW) {
         *pvid = *supported_view_ids[0];
@@ -300,7 +313,8 @@ HRESULT shell_view::CreateViewWindow2(LPSV2CVW2_PARAMS params) {
                 return E_INVALIDARG;
 
             view_id = *params->pvid;
-        }
+        } else
+            view_id = nullopt;
 
         shell_browser.reset(params->psbOwner);
 

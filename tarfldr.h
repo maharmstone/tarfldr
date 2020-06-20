@@ -67,7 +67,7 @@ private:
     HWND wnd_parent = nullptr, wnd_list = nullptr;
     unsigned int view_mode, flags;
     com_object<IImageList> image_list_large, image_list_small;
-    SHELLVIEWID view_id = *supported_view_ids[0];
+    std::optional<SHELLVIEWID> view_id = *supported_view_ids[0];
 };
 
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
