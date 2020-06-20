@@ -80,6 +80,8 @@ void shell_view::on_create() {
     try {
         DWORD style, exstyle;
         HRESULT hr;
+        com_object<IEnumIDList> enumidlist;
+        LPITEMIDLIST pidl;
 
         style = WS_TABSTOP | WS_VISIBLE | WS_CHILDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
                 LVS_SHAREIMAGELISTS | LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_AUTOARRANGE;
@@ -150,30 +152,67 @@ void shell_view::on_create() {
         SendMessageW(wnd_list, LVM_SETIMAGELIST, LVSIL_NORMAL, (LPARAM)image_list_large.get());
         SendMessageW(wnd_list, LVM_SETIMAGELIST, LVSIL_SMALL, (LPARAM)image_list_small.get());
 
-        vector<u16string> files;
+        {
+            IEnumIDList* obj;
 
-        files.emplace_back(u"hello.png");
-        files.emplace_back(u"world.txt");
+            hr = folder->EnumObjects(wnd, SHCONTF_NONFOLDERS | SHCONTF_FOLDERS, &obj);
+            if (FAILED(hr))
+                throw runtime_error("EnumObjects failed (" + to_string(hr) + ")");
 
-        for (const auto& f : files) {
+            enumidlist.reset(obj);
+        }
+
+        SetRedraw(false);
+
+        while (enumidlist->Next(1, &pidl, nullptr) == S_OK) {
             LVITEMW item;
 
-            item.mask = LVIF_TEXT | LVIF_IMAGE;
+            item.mask = LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM;
             item.iItem = 0;
             item.iSubItem = 0;
-            item.lParam = 0;
-            item.pszText = (LPWSTR)f.c_str();
+            item.lParam = (LPARAM)pidl;
+            item.pszText = L"test"; // FIXME // (LPWSTR)f.c_str();
+            item.iImage = 0; // FIXME
 
-            SHFILEINFOW sfi;
-            auto ret = SHGetFileInfoW((LPCWSTR)f.c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi),
-                                      SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
-            if (!ret)
-                throw last_error("SHGetFileInfo", GetLastError());
-
-            item.iImage = sfi.iIcon;
+//             SHFILEINFOW sfi;
+//             auto ret = SHGetFileInfoW((LPCWSTR)f.c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi),
+//                                       SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+//             if (!ret)
+//                 throw last_error("SHGetFileInfo", GetLastError());
+//
+//             item.iImage = sfi.iIcon;
 
             SendMessageW(wnd_list, LVM_INSERTITEMW, 0, (LPARAM)&item);
         }
+
+        // FIXME - send LVM_SORTITEMS
+
+        SetRedraw(true);
+
+//         vector<u16string> files;
+//
+//         files.emplace_back(u"hello.png");
+//         files.emplace_back(u"world.txt");
+//
+//         for (const auto& f : files) {
+//             LVITEMW item;
+//
+//             item.mask = LVIF_TEXT | LVIF_IMAGE;
+//             item.iItem = 0;
+//             item.iSubItem = 0;
+//             item.lParam = 0;
+//             item.pszText = (LPWSTR)f.c_str();
+//
+//             SHFILEINFOW sfi;
+//             auto ret = SHGetFileInfoW((LPCWSTR)f.c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi),
+//                                       SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+//             if (!ret)
+//                 throw last_error("SHGetFileInfo", GetLastError());
+//
+//             item.iImage = sfi.iIcon;
+//
+//             SendMessageW(wnd_list, LVM_INSERTITEMW, 0, (LPARAM)&item);
+//         }
     } catch (const exception& e) {
         auto msg = utf8_to_utf16(e.what());
 
@@ -588,8 +627,10 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDispl
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList **ppenumIDList) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
+    shell_enum* se = new shell_enum(static_cast<IShellFolder*>(this), grfFlags);
+
+    return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
 }
 
 HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
@@ -606,7 +647,7 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
     if (riid == IID_IUnknown || riid == IID_IShellView || riid == IID_IShellView2 || riid == IID_IFolderView || riid == IID_IFolderView2) {
-        shell_view* sv = new shell_view;
+        shell_view* sv = new shell_view(static_cast<IShellFolder*>(this));
         if (!sv)
             return E_OUTOFMEMORY;
 
@@ -686,6 +727,52 @@ HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE* pfeMode) {
     *pfeMode = folder_enum_mode;
 
     return S_OK;
+}
+
+HRESULT shell_enum::QueryInterface(REFIID iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_IEnumIDList)
+        *ppv = static_cast<IEnumIDList*>(this);
+    else {
+        string msg = fmt::format("shell_enum::QueryInterface: unsupported interface {}", iid);
+
+        OutputDebugStringA(msg.c_str());
+
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    reinterpret_cast<IUnknown*>(*ppv)->AddRef();
+
+    return S_OK;
+}
+
+ULONG shell_enum::AddRef() {
+    return InterlockedIncrement(&refcount);
+}
+
+ULONG shell_enum::Release() {
+    LONG rc = InterlockedDecrement(&refcount);
+
+    if (rc == 0)
+        delete this;
+
+    return rc;
+}
+
+HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG * pceltFetched) {
+    UNIMPLEMENTED;
+}
+
+HRESULT shell_enum::Skip(ULONG celt) {
+    UNIMPLEMENTED;
+}
+
+HRESULT shell_enum::Reset() {
+    UNIMPLEMENTED;
+}
+
+HRESULT shell_enum::Clone(IEnumIDList** ppenum) {
+    UNIMPLEMENTED;
 }
 
 class factory : public IClassFactory {

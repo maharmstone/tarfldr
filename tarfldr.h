@@ -25,8 +25,14 @@ using com_object = std::unique_ptr<T*, com_object_closer<T>>;
 
 static const SHELLVIEWID* supported_view_ids[] = { &VID_LargeIcons, &VID_SmallIcons, &VID_List, &VID_Details }; // FIXME - VID_Tile?
 
+class shell_folder;
+
 class shell_view : public IShellView2, public IFolderView2 {
 public:
+    shell_view(IShellFolder* parent) : folder{parent} {
+        folder->AddRef();
+    }
+
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
@@ -110,6 +116,7 @@ private:
     unsigned int view_mode, flags;
     com_object<IImageList> image_list_large, image_list_small;
     std::optional<SHELLVIEWID> view_id = *supported_view_ids[0];
+    com_object<IShellFolder> folder;
 };
 
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
@@ -159,6 +166,31 @@ private:
     std::vector<uint8_t> item_id_buf;
     SHITEMID* item_id = nullptr;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
+};
+
+class shell_enum : public IEnumIDList {
+public:
+    shell_enum(IShellFolder* folder, SHCONTF flags) : folder{folder}, flags(flags) {
+        folder->AddRef();
+    }
+
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // IEnumIDList
+
+    HRESULT __stdcall Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched);
+    HRESULT __stdcall Skip(ULONG celt);
+    HRESULT __stdcall Reset();
+    HRESULT __stdcall Clone(IEnumIDList** ppenum);
+
+private:
+    com_object<IShellFolder> folder;
+    SHCONTF flags;
+    LONG refcount = 0;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
