@@ -23,6 +23,8 @@ extern "C" STDAPI DllCanUnloadNow(void) {
 HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellView || iid == IID_IShellView2)
         *ppv = static_cast<IShellView2*>(this);
+    else if (iid == IID_IFolderView)
+        *ppv = static_cast<IFolderView*>(this);
     else {
         string msg = fmt::format("shell_view::QueryInterface: unsupported interface {}", iid);
 
@@ -389,6 +391,62 @@ HRESULT shell_view::SelectAndPositionItem(PCUITEMID_CHILD pidlItem, UINT uFlags,
     UNIMPLEMENTED; // FIXME
 }
 
+HRESULT shell_view::GetCurrentViewMode(UINT *pViewMode) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetCurrentViewMode(UINT ViewMode) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetFolder(REFIID riid, void **ppv) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::Item(int iItemIndex, PITEMID_CHILD *ppidl) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::ItemCount(UINT uFlags, int *pcItems) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::Items(UINT uFlags, REFIID riid, void **ppv) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSelectionMarkedItem(int *piItem) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetFocusedItem(int *piItem) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetItemPosition(PCUITEMID_CHILD pidl, POINT *ppt) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSpacing(POINT *ppt) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetDefaultSpacing(POINT *ppt) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetAutoArrange() {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SelectItem(int iItem, DWORD dwFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SelectAndPositionItems(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, POINT *apt, DWORD dwFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellFolder)
         *ppv = static_cast<IShellFolder*>(this);
@@ -447,7 +505,7 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
 }
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
-    if (riid == IID_IUnknown || riid == IID_IShellView) {
+    if (riid == IID_IUnknown || riid == IID_IShellView || riid == IID_IShellView2 || riid == IID_IFolderView) {
         shell_view* sv = new shell_view;
         if (!sv)
             return E_OUTOFMEMORY;

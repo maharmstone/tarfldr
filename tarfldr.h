@@ -25,7 +25,7 @@ using com_object = std::unique_ptr<T*, com_object_closer<T>>;
 
 static const SHELLVIEWID* supported_view_ids[] = { &VID_LargeIcons, &VID_SmallIcons, &VID_List, &VID_Details }; // FIXME - VID_Tile?
 
-class shell_view : public IShellView2 {
+class shell_view : public IShellView2, public IFolderView {
 public:
     // IUnknown
 
@@ -53,6 +53,23 @@ public:
     HRESULT __stdcall CreateViewWindow2(LPSV2CVW2_PARAMS lpParams);
     HRESULT __stdcall HandleRename(PCUITEMID_CHILD pidlNew);
     HRESULT __stdcall SelectAndPositionItem(PCUITEMID_CHILD pidlItem, UINT uFlags, POINT *ppt);
+
+    // IFolderView
+
+    HRESULT __stdcall GetCurrentViewMode(UINT *pViewMode);
+    HRESULT __stdcall SetCurrentViewMode(UINT ViewMode);
+    HRESULT __stdcall GetFolder(REFIID riid, void **ppv);
+    HRESULT __stdcall Item(int iItemIndex, PITEMID_CHILD *ppidl);
+    HRESULT __stdcall ItemCount(UINT uFlags, int *pcItems);
+    HRESULT __stdcall Items(UINT uFlags, REFIID riid, void **ppv);
+    HRESULT __stdcall GetSelectionMarkedItem(int *piItem);
+    HRESULT __stdcall GetFocusedItem(int *piItem);
+    HRESULT __stdcall GetItemPosition(PCUITEMID_CHILD pidl, POINT *ppt);
+    HRESULT __stdcall GetSpacing(POINT *ppt);
+    HRESULT __stdcall GetDefaultSpacing(POINT *ppt);
+    HRESULT __stdcall GetAutoArrange();
+    HRESULT __stdcall SelectItem(int iItem, DWORD dwFlags);
+    HRESULT __stdcall SelectAndPositionItems(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, POINT *apt, DWORD dwFlags);
 
     LRESULT wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam);
 
