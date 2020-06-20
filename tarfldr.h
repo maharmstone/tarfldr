@@ -23,109 +23,20 @@ public:
 template<typename T>
 using com_object = std::unique_ptr<T*, com_object_closer<T>>;
 
-static const SHELLVIEWID* supported_view_ids[] = { &VID_LargeIcons, &VID_SmallIcons, &VID_List, &VID_Details }; // FIXME - VID_Tile?
-
-class shell_folder;
-
-class shell_view : public IShellView2, public IFolderView2 {
-public:
-    shell_view(IShellFolder* parent) : folder{parent} {
-        folder->AddRef();
-    }
-
-    // IUnknown
-
-    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
-    ULONG __stdcall AddRef();
-    ULONG __stdcall Release();
-
-    // IShellView2
-
-    HRESULT __stdcall GetWindow(HWND *phwnd);
-    HRESULT __stdcall ContextSensitiveHelp(WINBOOL fEnterMode);
-    HRESULT __stdcall TranslateAccelerator(MSG *pmsg);
-    HRESULT __stdcall EnableModeless(WINBOOL fEnable);
-    HRESULT __stdcall UIActivate(UINT uState);
-    HRESULT __stdcall Refresh();
-    HRESULT __stdcall CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS pfs, IShellBrowser* psb,
-                                       RECT* prcView, HWND* phWnd);
-    HRESULT __stdcall DestroyViewWindow();
-    HRESULT __stdcall GetCurrentInfo(LPFOLDERSETTINGS pfs);
-    HRESULT __stdcall AddPropertySheetPages(DWORD dwReserved, LPFNSVADDPROPSHEETPAGE pfn, LPARAM lparam);
-    HRESULT __stdcall SaveViewState();
-    HRESULT __stdcall SelectItem(PCUITEMID_CHILD pidlItem, SVSIF uFlags);
-    HRESULT __stdcall GetItemObject(UINT uItem, REFIID riid, void** ppv);
-    HRESULT __stdcall GetView(SHELLVIEWID *pvid, ULONG uView);
-    HRESULT __stdcall CreateViewWindow2(LPSV2CVW2_PARAMS lpParams);
-    HRESULT __stdcall HandleRename(PCUITEMID_CHILD pidlNew);
-    HRESULT __stdcall SelectAndPositionItem(PCUITEMID_CHILD pidlItem, UINT uFlags, POINT *ppt);
-
-    // IFolderView2
-
-    HRESULT __stdcall GetCurrentViewMode(UINT *pViewMode);
-    HRESULT __stdcall SetCurrentViewMode(UINT ViewMode);
-    HRESULT __stdcall GetFolder(REFIID riid, void **ppv);
-    HRESULT __stdcall Item(int iItemIndex, PITEMID_CHILD *ppidl);
-    HRESULT __stdcall ItemCount(UINT uFlags, int *pcItems);
-    HRESULT __stdcall Items(UINT uFlags, REFIID riid, void **ppv);
-    HRESULT __stdcall GetSelectionMarkedItem(int *piItem);
-    HRESULT __stdcall GetFocusedItem(int *piItem);
-    HRESULT __stdcall GetItemPosition(PCUITEMID_CHILD pidl, POINT *ppt);
-    HRESULT __stdcall GetSpacing(POINT *ppt);
-    HRESULT __stdcall GetDefaultSpacing(POINT *ppt);
-    HRESULT __stdcall GetAutoArrange();
-    HRESULT __stdcall SelectItem(int iItem, DWORD dwFlags);
-    HRESULT __stdcall SelectAndPositionItems(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, POINT *apt, DWORD dwFlags);
-    HRESULT __stdcall SetGroupBy(REFPROPERTYKEY key, WINBOOL fAscending);
-    HRESULT __stdcall GetGroupBy(PROPERTYKEY *pkey, WINBOOL *pfAscending);
-    HRESULT __stdcall SetViewProperty(PCUITEMID_CHILD pidl, REFPROPERTYKEY propkey, REFPROPVARIANT propvar);
-    HRESULT __stdcall GetViewProperty(PCUITEMID_CHILD pidl, REFPROPERTYKEY propkey, PROPVARIANT *ppropvar);
-    HRESULT __stdcall SetTileViewProperties(PCUITEMID_CHILD pidl, LPCWSTR pszPropList);
-    HRESULT __stdcall SetExtendedTileViewProperties(PCUITEMID_CHILD pidl, LPCWSTR pszPropList);
-    HRESULT __stdcall SetText(FVTEXTTYPE iType, LPCWSTR pwszText);
-    HRESULT __stdcall SetCurrentFolderFlags(DWORD dwMask, DWORD dwFlags);
-    HRESULT __stdcall GetCurrentFolderFlags(DWORD *pdwFlags);
-    HRESULT __stdcall GetSortColumnCount(int *pcColumns);
-    HRESULT __stdcall SetSortColumns(const SORTCOLUMN *rgSortColumns, int cColumns);
-    HRESULT __stdcall GetSortColumns(SORTCOLUMN *rgSortColumns, int cColumns);
-    HRESULT __stdcall GetItem(int iItem, REFIID riid, void **ppv);
-    HRESULT __stdcall GetVisibleItem(int iStart, WINBOOL fPrevious, int *piItem);
-    HRESULT __stdcall GetSelectedItem(int iStart, int *piItem);
-    HRESULT __stdcall GetSelection(WINBOOL fNoneImpliesFolder, IShellItemArray **ppsia);
-    HRESULT __stdcall GetSelectionState(PCUITEMID_CHILD pidl, DWORD *pdwFlags);
-    HRESULT __stdcall InvokeVerbOnSelection(LPCSTR pszVerb);
-    HRESULT __stdcall SetViewModeAndIconSize(FOLDERVIEWMODE uViewMode, int iImageSize);
-    HRESULT __stdcall GetViewModeAndIconSize(FOLDERVIEWMODE *puViewMode, int *piImageSize);
-    HRESULT __stdcall SetGroupSubsetCount(UINT cVisibleRows);
-    HRESULT __stdcall GetGroupSubsetCount(UINT *pcVisibleRows);
-    HRESULT __stdcall SetRedraw(WINBOOL fRedrawOn);
-    HRESULT __stdcall IsMoveInSameFolder();
-    HRESULT __stdcall DoRename();
-
-    LRESULT wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam);
-
-    HWND wnd = nullptr;
-
-private:
-    void on_create();
-    void on_size(unsigned int width, unsigned int height);
-
-    LONG refcount = 0;
-    com_object<IShellBrowser> shell_browser;
-    HWND wnd_parent = nullptr, wnd_list = nullptr;
-    unsigned int view_mode, flags;
-    com_object<IImageList> image_list_large, image_list_small;
-    std::optional<SHELLVIEWID> view_id = *supported_view_ids[0];
-    com_object<IShellFolder> folder;
-};
-
 typedef struct {
     std::u16string name;
+    int fmt;
+    int cxChar;
+} header_info;
+
+typedef struct {
+    std::string name;
 } tar_item;
 
-class shell_folder : public IShellFolder2, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
+class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
 public:
     shell_folder();
+    virtual ~shell_folder();
 
     // IUnknown
 
@@ -164,11 +75,6 @@ public:
     HRESULT __stdcall InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti);
     HRESULT __stdcall GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti);
 
-    // IPersistIDList
-
-    HRESULT __stdcall SetIDList(PCIDLIST_ABSOLUTE pidl);
-    HRESULT __stdcall GetIDList(PIDLIST_ABSOLUTE* ppidl);
-
     // IObjectWithFolderEnumMode
 
     HRESULT __stdcall SetMode(FOLDER_ENUM_MODE feMode);
@@ -180,6 +86,7 @@ private:
     SHITEMID* item_id = nullptr;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
     std::vector<tar_item> items;
+    PIDLIST_ABSOLUTE root_pidl = nullptr;
 };
 
 class shell_enum : public IEnumIDList {
