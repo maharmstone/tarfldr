@@ -123,7 +123,7 @@ typedef struct {
     std::u16string name;
 } tar_item;
 
-class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
+class shell_folder : public IShellFolder2, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
 public:
     shell_folder();
 
@@ -133,7 +133,7 @@ public:
     ULONG __stdcall AddRef();
     ULONG __stdcall Release();
 
-    // IShellFolder
+    // IShellFolder2
 
     HRESULT __stdcall ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
                                        PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes);
@@ -148,6 +148,13 @@ public:
     HRESULT __stdcall GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET *pName);
     HRESULT __stdcall SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
                                 PITEMID_CHILD *ppidlOut);
+    HRESULT __stdcall GetDefaultSearchGUID(GUID *pguid);
+    HRESULT __stdcall EnumSearches(IEnumExtraSearch **ppenum);
+    HRESULT __stdcall GetDefaultColumn(DWORD dwRes, ULONG *pSort, ULONG *pDisplay);
+    HRESULT __stdcall GetDefaultColumnState(UINT iColumn, SHCOLSTATEF *pcsFlags);
+    HRESULT __stdcall GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID *pscid, VARIANT *pv);
+    HRESULT __stdcall GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd);
+    HRESULT __stdcall MapColumnToSCID(UINT iColumn, SHCOLUMNID *pscid);
 
     // IPersistFolder3
 

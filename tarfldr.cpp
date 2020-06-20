@@ -587,8 +587,8 @@ HRESULT shell_view::DoRename() {
 }
 
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
-    if (iid == IID_IUnknown || iid == IID_IShellFolder)
-        *ppv = static_cast<IShellFolder*>(this);
+    if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2)
+        *ppv = static_cast<IShellFolder2*>(this);
     else if (iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3)
         *ppv = static_cast<IPersistFolder3*>(this);
     else if (iid == IID_IPersistIDList)
@@ -673,6 +673,34 @@ HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRR
 
 HRESULT shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
                                 PITEMID_CHILD *ppidlOut) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::GetDefaultSearchGUID(GUID *pguid) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::EnumSearches(IEnumExtraSearch **ppenum) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::GetDefaultColumn(DWORD dwRes, ULONG *pSort, ULONG *pDisplay) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF *pcsFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID *pscid, VARIANT *pv) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_folder::MapColumnToSCID(UINT iColumn, SHCOLUMNID *pscid) {
     UNIMPLEMENTED; // FIXME
 }
 
@@ -848,7 +876,7 @@ public:
     // IClassFactory
 
     HRESULT __stdcall CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
-        if (iid == IID_IUnknown || iid == IID_IShellFolder) {
+        if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2) {
             shell_folder* sf = new shell_folder;
             if (!sf)
                 return E_OUTOFMEMORY;
