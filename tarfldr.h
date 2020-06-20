@@ -6,6 +6,7 @@
 #include <vector>
 #include <stdexcept>
 #include <stdint.h>
+#include <shlguid.h>
 #include <fmt/format.h>
 
 template<typename T>
@@ -21,6 +22,8 @@ public:
 
 template<typename T>
 using com_object = std::unique_ptr<T*, com_object_closer<T>>;
+
+static const SHELLVIEWID* supported_view_ids[] = { &VID_LargeIcons, &VID_SmallIcons, &VID_List, &VID_Details }; // FIXME - VID_Tile?
 
 class shell_view : public IShellView2 {
 public:
@@ -64,6 +67,7 @@ private:
     HWND wnd_parent = nullptr, wnd_list = nullptr;
     unsigned int view_mode, flags;
     com_object<IImageList> image_list_large, image_list_small;
+    SHELLVIEWID view_id = *supported_view_ids[0];
 };
 
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {

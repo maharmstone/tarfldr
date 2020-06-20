@@ -2,6 +2,7 @@
 
 #include <initguid.h>
 #include <commoncontrols.h>
+#include <span>
 
 using namespace std;
 
@@ -258,7 +259,22 @@ HRESULT shell_view::GetItemObject(UINT uItem, REFIID riid, void** ppv) {
 }
 
 HRESULT shell_view::GetView(SHELLVIEWID *pvid, ULONG uView) {
-    UNIMPLEMENTED; // FIXME
+    if (uView == SV2GV_CURRENTVIEW) {
+        *pvid = view_id;
+        return S_OK;
+    } else if (uView == SV2GV_DEFAULTVIEW) {
+        *pvid = *supported_view_ids[0];
+        return S_OK;
+    }
+
+    span sp = supported_view_ids;
+
+    if (uView >= sp.size())
+        return E_INVALIDARG;
+
+    *pvid = *sp[uView];
+
+    return S_OK;
 }
 
 HRESULT shell_view::CreateViewWindow2(LPSV2CVW2_PARAMS params) {
@@ -268,6 +284,23 @@ HRESULT shell_view::CreateViewWindow2(LPSV2CVW2_PARAMS params) {
 
         if (!params || wnd)
             return E_UNEXPECTED;
+
+        if (params->pvid) {
+            span sp = supported_view_ids;
+            bool supported = false;
+
+            for (const auto& v : sp) {
+                if (*v == *params->pvid) {
+                    supported = true;
+                    break;
+                }
+            }
+
+            if (!supported)
+                return E_INVALIDARG;
+
+            view_id = *params->pvid;
+        }
 
         shell_browser.reset(params->psbOwner);
 
