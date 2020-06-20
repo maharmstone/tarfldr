@@ -204,78 +204,22 @@ static LRESULT CALLBACK shell_view_wndproc_stub(HWND hWnd, UINT uMessage, WPARAM
 
 HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS pfs, IShellBrowser* psb,
                                      RECT* prcView, HWND* phWnd) {
-    try {
-        INITCOMMONCONTROLSEX icex;
-        WNDCLASSW wndclass;
+    SV2CVW2_PARAMS params;
+    HRESULT hr;
 
-        if (!psb || wnd)
-            return E_UNEXPECTED;
+    params.cbSize = sizeof(params);
+    params.psvPrev = psvPrevious;
+    params.pfs = pfs;
+    params.psbOwner = psb;
+    params.prcView = prcView;
+    params.pvid = nullptr;
 
-        shell_browser.reset(psb);
+    hr = CreateViewWindow2(&params);
 
-        if (shell_browser)
-            shell_browser->AddRef();
+    if (SUCCEEDED(hr))
+        *phWnd = params.hwndView;
 
-        icex.dwSize = sizeof(icex);
-        icex.dwICC = ICC_LISTVIEW_CLASSES;
-        InitCommonControlsEx(&icex);
-
-        *phWnd = nullptr;
-
-        // FIXME - store view mode and flags
-
-        shell_browser->GetWindow(&wnd_parent);
-
-        // FIXME - get IID_ICommDlgBrowser of shell_browser
-
-        if (!GetClassInfoW(instance, class_name, &wndclass)) {
-            wndclass.style = CS_HREDRAW | CS_VREDRAW;
-            wndclass.lpfnWndProc = shell_view_wndproc_stub;
-            wndclass.cbClsExtra = 0;
-            wndclass.cbWndExtra = 0;
-            wndclass.hInstance = instance;
-            wndclass.hIcon = 0;
-            wndclass.hCursor = LoadCursorW(0, (LPWSTR)IDC_ARROW);
-            wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-            wndclass.lpszMenuName = nullptr;
-            wndclass.lpszClassName = class_name;
-
-            if (!RegisterClassW(&wndclass))
-                throw last_error("RegisterClassW", GetLastError());
-        }
-
-        view_mode = pfs->ViewMode;
-        flags = pfs->fFlags;
-
-        wnd = CreateWindowExW(0, class_name, nullptr, WS_CHILD | WS_TABSTOP,
-                              prcView->left, prcView->top,
-                              prcView->right - prcView->left,
-                              prcView->bottom - prcView->top,
-                              wnd_parent, 0, instance, this);
-
-        // FIXME - fiddle about with toolbar
-
-        if (!wnd) {
-            auto le = GetLastError();
-
-            shell_browser.reset();
-
-            throw last_error("CreateWindowExW", le);
-        }
-
-        SetWindowPos(wnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-        UpdateWindow(wnd);
-
-        *phWnd = wnd;
-    } catch (const exception& e) {
-        auto msg = utf8_to_utf16(e.what());
-
-        MessageBoxW(0, (WCHAR*)msg.c_str(), L"Error", MB_ICONERROR);
-
-        return E_FAIL;
-    }
-
-    return S_OK;
+    return hr;
 }
 
 HRESULT shell_view::DestroyViewWindow() {
@@ -317,8 +261,77 @@ HRESULT shell_view::GetView(SHELLVIEWID *pvid, ULONG uView) {
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_view::CreateViewWindow2(LPSV2CVW2_PARAMS lpParams) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_view::CreateViewWindow2(LPSV2CVW2_PARAMS params) {
+    try {
+        INITCOMMONCONTROLSEX icex;
+        WNDCLASSW wndclass;
+
+        if (!params || wnd)
+            return E_UNEXPECTED;
+
+        shell_browser.reset(params->psbOwner);
+
+        if (shell_browser)
+            shell_browser->AddRef();
+
+        icex.dwSize = sizeof(icex);
+        icex.dwICC = ICC_LISTVIEW_CLASSES;
+        InitCommonControlsEx(&icex);
+
+        params->hwndView = nullptr;
+
+        shell_browser->GetWindow(&wnd_parent);
+
+        // FIXME - get IID_ICommDlgBrowser of shell_browser
+
+        if (!GetClassInfoW(instance, class_name, &wndclass)) {
+            wndclass.style = CS_HREDRAW | CS_VREDRAW;
+            wndclass.lpfnWndProc = shell_view_wndproc_stub;
+            wndclass.cbClsExtra = 0;
+            wndclass.cbWndExtra = 0;
+            wndclass.hInstance = instance;
+            wndclass.hIcon = 0;
+            wndclass.hCursor = LoadCursorW(0, (LPWSTR)IDC_ARROW);
+            wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+            wndclass.lpszMenuName = nullptr;
+            wndclass.lpszClassName = class_name;
+
+            if (!RegisterClassW(&wndclass))
+                throw last_error("RegisterClassW", GetLastError());
+        }
+
+        view_mode = params->pfs->ViewMode;
+        flags = params->pfs->fFlags;
+
+        wnd = CreateWindowExW(0, class_name, nullptr, WS_CHILD | WS_TABSTOP,
+                              params->prcView->left, params->prcView->top,
+                              params->prcView->right - params->prcView->left,
+                              params->prcView->bottom - params->prcView->top,
+                              wnd_parent, 0, instance, this);
+
+        // FIXME - fiddle about with toolbar
+
+        if (!wnd) {
+            auto le = GetLastError();
+
+            shell_browser.reset();
+
+            throw last_error("CreateWindowExW", le);
+        }
+
+        SetWindowPos(wnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        UpdateWindow(wnd);
+
+        params->hwndView = wnd;
+    } catch (const exception& e) {
+        auto msg = utf8_to_utf16(e.what());
+
+        MessageBoxW(0, (WCHAR*)msg.c_str(), L"Error", MB_ICONERROR);
+
+        return E_FAIL;
+    }
+
+    return S_OK;
 }
 
 HRESULT shell_view::HandleRename(PCUITEMID_CHILD pidlNew) {
