@@ -23,8 +23,8 @@ extern "C" STDAPI DllCanUnloadNow(void) {
 HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellView || iid == IID_IShellView2)
         *ppv = static_cast<IShellView2*>(this);
-    else if (iid == IID_IFolderView)
-        *ppv = static_cast<IFolderView*>(this);
+    else if (iid == IID_IFolderView || iid == IID_IFolderView2)
+        *ppv = static_cast<IFolderView2*>(this);
     else {
         string msg = fmt::format("shell_view::QueryInterface: unsupported interface {}", iid);
 
@@ -447,6 +447,106 @@ HRESULT shell_view::SelectAndPositionItems(UINT cidl, PCUITEMID_CHILD_ARRAY apid
     UNIMPLEMENTED; // FIXME
 }
 
+HRESULT shell_view::SetGroupBy(REFPROPERTYKEY key, WINBOOL fAscending) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetGroupBy(PROPERTYKEY *pkey, WINBOOL *pfAscending) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetViewProperty(PCUITEMID_CHILD pidl, REFPROPERTYKEY propkey, REFPROPVARIANT propvar) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetViewProperty(PCUITEMID_CHILD pidl, REFPROPERTYKEY propkey, PROPVARIANT *ppropvar) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetTileViewProperties(PCUITEMID_CHILD pidl, LPCWSTR pszPropList) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetExtendedTileViewProperties(PCUITEMID_CHILD pidl, LPCWSTR pszPropList) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetText(FVTEXTTYPE iType, LPCWSTR pwszText) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetCurrentFolderFlags(DWORD dwMask, DWORD dwFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetCurrentFolderFlags(DWORD *pdwFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSortColumnCount(int *pcColumns) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetSortColumns(const SORTCOLUMN *rgSortColumns, int cColumns) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSortColumns(SORTCOLUMN *rgSortColumns, int cColumns) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetItem(int iItem, REFIID riid, void **ppv) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetVisibleItem(int iStart, WINBOOL fPrevious, int *piItem) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSelectedItem(int iStart, int *piItem) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSelection(WINBOOL fNoneImpliesFolder, IShellItemArray **ppsia) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetSelectionState(PCUITEMID_CHILD pidl, DWORD *pdwFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::InvokeVerbOnSelection(LPCSTR pszVerb) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetViewModeAndIconSize(FOLDERVIEWMODE uViewMode, int iImageSize) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetViewModeAndIconSize(FOLDERVIEWMODE *puViewMode, int *piImageSize) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetGroupSubsetCount(UINT cVisibleRows) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::GetGroupSubsetCount(UINT *pcVisibleRows) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::SetRedraw(WINBOOL fRedrawOn) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::IsMoveInSameFolder() {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_view::DoRename() {
+    UNIMPLEMENTED; // FIXME
+}
+
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellFolder)
         *ppv = static_cast<IShellFolder*>(this);
@@ -505,7 +605,7 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
 }
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
-    if (riid == IID_IUnknown || riid == IID_IShellView || riid == IID_IShellView2 || riid == IID_IFolderView) {
+    if (riid == IID_IUnknown || riid == IID_IShellView || riid == IID_IShellView2 || riid == IID_IFolderView || riid == IID_IFolderView2) {
         shell_view* sv = new shell_view;
         if (!sv)
             return E_OUTOFMEMORY;

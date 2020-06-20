@@ -25,7 +25,7 @@ using com_object = std::unique_ptr<T*, com_object_closer<T>>;
 
 static const SHELLVIEWID* supported_view_ids[] = { &VID_LargeIcons, &VID_SmallIcons, &VID_List, &VID_Details }; // FIXME - VID_Tile?
 
-class shell_view : public IShellView2, public IFolderView {
+class shell_view : public IShellView2, public IFolderView2 {
 public:
     // IUnknown
 
@@ -54,7 +54,7 @@ public:
     HRESULT __stdcall HandleRename(PCUITEMID_CHILD pidlNew);
     HRESULT __stdcall SelectAndPositionItem(PCUITEMID_CHILD pidlItem, UINT uFlags, POINT *ppt);
 
-    // IFolderView
+    // IFolderView2
 
     HRESULT __stdcall GetCurrentViewMode(UINT *pViewMode);
     HRESULT __stdcall SetCurrentViewMode(UINT ViewMode);
@@ -70,6 +70,31 @@ public:
     HRESULT __stdcall GetAutoArrange();
     HRESULT __stdcall SelectItem(int iItem, DWORD dwFlags);
     HRESULT __stdcall SelectAndPositionItems(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, POINT *apt, DWORD dwFlags);
+    HRESULT __stdcall SetGroupBy(REFPROPERTYKEY key, WINBOOL fAscending);
+    HRESULT __stdcall GetGroupBy(PROPERTYKEY *pkey, WINBOOL *pfAscending);
+    HRESULT __stdcall SetViewProperty(PCUITEMID_CHILD pidl, REFPROPERTYKEY propkey, REFPROPVARIANT propvar);
+    HRESULT __stdcall GetViewProperty(PCUITEMID_CHILD pidl, REFPROPERTYKEY propkey, PROPVARIANT *ppropvar);
+    HRESULT __stdcall SetTileViewProperties(PCUITEMID_CHILD pidl, LPCWSTR pszPropList);
+    HRESULT __stdcall SetExtendedTileViewProperties(PCUITEMID_CHILD pidl, LPCWSTR pszPropList);
+    HRESULT __stdcall SetText(FVTEXTTYPE iType, LPCWSTR pwszText);
+    HRESULT __stdcall SetCurrentFolderFlags(DWORD dwMask, DWORD dwFlags);
+    HRESULT __stdcall GetCurrentFolderFlags(DWORD *pdwFlags);
+    HRESULT __stdcall GetSortColumnCount(int *pcColumns);
+    HRESULT __stdcall SetSortColumns(const SORTCOLUMN *rgSortColumns, int cColumns);
+    HRESULT __stdcall GetSortColumns(SORTCOLUMN *rgSortColumns, int cColumns);
+    HRESULT __stdcall GetItem(int iItem, REFIID riid, void **ppv);
+    HRESULT __stdcall GetVisibleItem(int iStart, WINBOOL fPrevious, int *piItem);
+    HRESULT __stdcall GetSelectedItem(int iStart, int *piItem);
+    HRESULT __stdcall GetSelection(WINBOOL fNoneImpliesFolder, IShellItemArray **ppsia);
+    HRESULT __stdcall GetSelectionState(PCUITEMID_CHILD pidl, DWORD *pdwFlags);
+    HRESULT __stdcall InvokeVerbOnSelection(LPCSTR pszVerb);
+    HRESULT __stdcall SetViewModeAndIconSize(FOLDERVIEWMODE uViewMode, int iImageSize);
+    HRESULT __stdcall GetViewModeAndIconSize(FOLDERVIEWMODE *puViewMode, int *piImageSize);
+    HRESULT __stdcall SetGroupSubsetCount(UINT cVisibleRows);
+    HRESULT __stdcall GetGroupSubsetCount(UINT *pcVisibleRows);
+    HRESULT __stdcall SetRedraw(WINBOOL fRedrawOn);
+    HRESULT __stdcall IsMoveInSameFolder();
+    HRESULT __stdcall DoRename();
 
     LRESULT wndproc(UINT uMessage, WPARAM wParam, LPARAM lParam);
 
