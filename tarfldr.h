@@ -8,6 +8,20 @@
 #include <stdint.h>
 #include <fmt/format.h>
 
+template<typename T>
+class com_object_closer {
+public:
+    typedef T* pointer;
+
+    void operator()(T* t) {
+        if (t)
+            t->Release();
+    }
+};
+
+template<typename T>
+using com_object = std::unique_ptr<T*, com_object_closer<T>>;
+
 class shell_view : public IShellView2 {
 public:
     virtual ~shell_view();
@@ -51,6 +65,7 @@ private:
     IShellBrowser* shell_browser = nullptr;
     HWND wnd_parent = nullptr, wnd_list = nullptr;
     unsigned int view_mode, flags;
+    com_object<IImageList> image_list_large, image_list_small;
 };
 
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {

@@ -1,5 +1,8 @@
 #include "tarfldr.h"
 
+#include <initguid.h>
+#include <commoncontrols.h>
+
 using namespace std;
 
 static const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
@@ -78,6 +81,7 @@ HRESULT shell_view::Refresh() {
 void shell_view::on_create() {
     try {
         DWORD style, exstyle;
+        HRESULT hr;
 
         style = WS_TABSTOP | WS_VISIBLE | WS_CHILDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN |
                 LVS_SHAREIMAGELISTS | LVS_EDITLABELS | LVS_ALIGNLEFT | LVS_AUTOARRANGE;
@@ -122,15 +126,40 @@ void shell_view::on_create() {
         // FIXME - create columns
         // FIXME - populate
 
-        {
+        hr = SHGetImageList(SHIL_LARGE, IID_IImageList, (void**)&image_list_large);
+        if (FAILED(hr))
+            throw runtime_error("SHGetImageList failed (" + to_string(hr) + ")");
+
+        hr = SHGetImageList(SHIL_SMALL, IID_IImageList, (void**)&image_list_small);
+        if (FAILED(hr))
+            throw runtime_error("SHGetImageList failed (" + to_string(hr) + ")");
+
+        // FIXME - other sizes?
+
+        SendMessageW(wnd_list, LVM_SETIMAGELIST, LVSIL_NORMAL, (LPARAM)image_list_large.get());
+        SendMessageW(wnd_list, LVM_SETIMAGELIST, LVSIL_SMALL, (LPARAM)image_list_small.get());
+
+        vector<u16string> files;
+
+        files.emplace_back(u"hello.png");
+        files.emplace_back(u"world.txt");
+
+        for (const auto& f : files) {
             LVITEMW item;
 
-            item.mask = LVIF_TEXT;
+            item.mask = LVIF_TEXT | LVIF_IMAGE;
             item.iItem = 0;
             item.iSubItem = 0;
             item.lParam = 0;
-            item.pszText = L"hello";
-            item.iImage = 0;
+            item.pszText = (LPWSTR)f.c_str();
+
+            SHFILEINFOW sfi;
+            auto ret = SHGetFileInfoW((LPCWSTR)f.c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi),
+                                      SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+            if (!ret)
+                throw last_error("SHGetFileInfo", GetLastError());
+
+            item.iImage = sfi.iIcon;
 
             SendMessageW(wnd_list, LVM_INSERTITEMW, 0, (LPARAM)&item);
         }
