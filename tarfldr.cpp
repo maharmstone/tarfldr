@@ -628,7 +628,7 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDispl
 }
 
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
-    shell_enum* se = new shell_enum(static_cast<IShellFolder*>(this), grfFlags);
+    shell_enum* se = new shell_enum(items, grfFlags);
 
     return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
 }
@@ -759,20 +759,52 @@ ULONG shell_enum::Release() {
     return rc;
 }
 
-HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG * pceltFetched) {
-    UNIMPLEMENTED;
+HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) {
+    if (pceltFetched)
+        *pceltFetched = 0;
+
+    // FIXME - only show folders or non-folders as requested
+
+    while (celt > 0 && index < items.size()) {
+        auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + (items[index].name.length() * sizeof(char16_t)));
+
+        if (!item)
+            return E_OUTOFMEMORY;
+
+        *rgelt = item;
+
+        item->mkid.cb = items[index].name.length() * sizeof(char16_t);
+        memcpy(item->mkid.abID, items[index].name.data(), items[index].name.length() * sizeof(char16_t));
+
+        celt--;
+        index++;
+
+        if (pceltFetched)
+            *pceltFetched++;
+    }
+
+    return celt == 0 ? S_OK : S_FALSE;
 }
 
 HRESULT shell_enum::Skip(ULONG celt) {
-    UNIMPLEMENTED;
+    UNIMPLEMENTED; // FIXME
 }
 
 HRESULT shell_enum::Reset() {
-    UNIMPLEMENTED;
+    index = 0;
+
+    return S_OK;
 }
 
 HRESULT shell_enum::Clone(IEnumIDList** ppenum) {
-    UNIMPLEMENTED;
+    UNIMPLEMENTED; // FIXME
+}
+
+shell_folder::shell_folder() {
+    // FIXME
+
+    items.emplace_back(u"hello.txt");
+    items.emplace_back(u"world.png");
 }
 
 class factory : public IClassFactory {

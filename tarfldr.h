@@ -119,8 +119,14 @@ private:
     com_object<IShellFolder> folder;
 };
 
+typedef struct {
+    std::u16string name;
+} tar_item;
+
 class shell_folder : public IShellFolder, public IPersistFolder3, public IPersistIDList, public IObjectWithFolderEnumMode {
 public:
+    shell_folder();
+
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
@@ -166,12 +172,12 @@ private:
     std::vector<uint8_t> item_id_buf;
     SHITEMID* item_id = nullptr;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
+    std::vector<tar_item> items;
 };
 
 class shell_enum : public IEnumIDList {
 public:
-    shell_enum(IShellFolder* folder, SHCONTF flags) : folder{folder}, flags(flags) {
-        folder->AddRef();
+    shell_enum(const std::vector<tar_item>& items, SHCONTF flags): items(items), flags(flags) {
     }
 
     // IUnknown
@@ -188,9 +194,10 @@ public:
     HRESULT __stdcall Clone(IEnumIDList** ppenum);
 
 private:
-    com_object<IShellFolder> folder;
     SHCONTF flags;
+    std::vector<tar_item> items;
     LONG refcount = 0;
+    size_t index = 0;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
