@@ -10,10 +10,10 @@ using namespace std;
 static const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
 
 static const header_info headers[] = { // FIXME - move strings to resource file
-    { u"Name", LVCFMT_RIGHT, 15 },
+    { u"Name", LVCFMT_LEFT, 15 },
     { u"Size", LVCFMT_RIGHT, 10 },
-    { u"Type", LVCFMT_RIGHT, 10 },
-    { u"Modified", LVCFMT_RIGHT, 12 },
+    { u"Type", LVCFMT_LEFT, 10 },
+    { u"Modified", LVCFMT_LEFT, 12 },
 };
 
 LONG objs_loaded = 0;
@@ -109,8 +109,26 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET *pName) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName) {
+    size_t index;
+
+    if (pidl->mkid.cb != offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t))
+        return E_INVALIDARG;
+
+    index = *(size_t*)pidl->mkid.abID;
+
+    if (index >= items.size())
+        return E_INVALIDARG;
+
+    const auto& item = items[index];
+
+    auto u16name = utf8_to_utf16(item.name);
+
+    pName->uType = STRRET_WSTR;
+    pName->pOleStr = (WCHAR*)CoTaskMemAlloc((u16name.length() + 1) * sizeof(char16_t));
+    memcpy(pName->pOleStr, u16name.c_str(), (u16name.length() + 1) * sizeof(char16_t));
+
+    return S_OK;
 }
 
 HRESULT shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
@@ -154,7 +172,6 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
         return S_OK;
     }
 
-    __asm("int $3");
     UNIMPLEMENTED; // FIXME
 }
 
@@ -243,15 +260,15 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
     // FIXME - only show folders or non-folders as requested
 
     while (celt > 0 && index < items.size()) {
-        auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + items[index].name.length());
+        auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t));
 
         if (!item)
             return E_OUTOFMEMORY;
 
         *rgelt = item;
 
-        item->mkid.cb = items[index].name.length();
-        memcpy(item->mkid.abID, items[index].name.data(), items[index].name.length());
+        item->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t);
+        *(size_t*)item->mkid.abID = index;
 
         celt--;
         index++;
