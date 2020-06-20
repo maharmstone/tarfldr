@@ -29,9 +29,12 @@ typedef struct {
     int cxChar;
 } header_info;
 
-typedef struct {
+struct tar_item {
+    tar_item(const std::string_view& name, bool dir) : name(name), dir(dir) { }
+
     std::string name;
-} tar_item;
+    bool dir;
+};
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
 public:
@@ -53,7 +56,7 @@ public:
     HRESULT __stdcall BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv);
     HRESULT __stdcall CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2);
     HRESULT __stdcall CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv);
-    HRESULT __stdcall GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut);
+    HRESULT __stdcall GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut);
     HRESULT __stdcall GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
                                     UINT *rgfReserved, void **ppv);
     HRESULT __stdcall GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName);

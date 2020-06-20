@@ -100,8 +100,40 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
     return E_NOINTERFACE;
 }
 
-HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF *rgfInOut) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut) {
+    SFGAOF common_atts = *rgfInOut;
+
+    while (cidl > 0) {
+        SFGAOF atts;
+        size_t index;
+
+        if (apidl[0]->mkid.cb != offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t))
+            return E_INVALIDARG;
+
+        index = *(size_t*)(apidl[0]->mkid.abID);
+
+        if (index >= items.size())
+            return E_INVALIDARG;
+
+        const auto& item = items[index];
+
+        if (item.dir) {
+            atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
+            atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
+        } else
+            atts = SFGAO_STREAM;
+
+        // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
+
+        common_atts &= atts;
+
+        cidl--;
+        apidl++;
+    }
+
+    *rgfInOut = common_atts;
+
+    return S_OK;
 }
 
 HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
@@ -297,8 +329,9 @@ HRESULT shell_enum::Clone(IEnumIDList** ppenum) {
 shell_folder::shell_folder() {
     // FIXME
 
-    items.emplace_back("hello.txt");
-    items.emplace_back("world.png");
+    items.emplace_back("hello.txt", false);
+    items.emplace_back("world.png", false);
+    items.emplace_back("dir", true);
 }
 
 shell_folder::~shell_folder() {
