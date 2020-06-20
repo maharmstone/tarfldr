@@ -24,8 +24,6 @@ using com_object = std::unique_ptr<T*, com_object_closer<T>>;
 
 class shell_view : public IShellView2 {
 public:
-    virtual ~shell_view();
-
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
@@ -62,7 +60,7 @@ private:
     void on_size(unsigned int width, unsigned int height);
 
     LONG refcount = 0;
-    IShellBrowser* shell_browser = nullptr;
+    com_object<IShellBrowser> shell_browser;
     HWND wnd_parent = nullptr, wnd_list = nullptr;
     unsigned int view_mode, flags;
     com_object<IImageList> image_list_large, image_list_small;

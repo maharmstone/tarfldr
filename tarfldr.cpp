@@ -19,11 +19,6 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
-shell_view::~shell_view() {
-    if (shell_browser)
-        shell_browser->Release();
-}
-
 HRESULT shell_view::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellView || iid == IID_IShellView2)
         *ppv = static_cast<IShellView2*>(this);
@@ -216,10 +211,7 @@ HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS 
         if (!psb || wnd)
             return E_UNEXPECTED;
 
-        if (shell_browser)
-            shell_browser->Release();
-
-        shell_browser = psb;
+        shell_browser.reset(psb);
 
         if (shell_browser)
             shell_browser->AddRef();
@@ -266,8 +258,7 @@ HRESULT shell_view::CreateViewWindow(IShellView* psvPrevious, LPCFOLDERSETTINGS 
         if (!wnd) {
             auto le = GetLastError();
 
-            shell_browser->Release();
-            shell_browser = nullptr;
+            shell_browser.reset();
 
             throw last_error("CreateWindowExW", le);
         }
@@ -295,10 +286,7 @@ HRESULT shell_view::DestroyViewWindow() {
 
     DestroyWindow(wnd);
 
-    if (shell_browser) {
-        shell_browser->Release();
-        shell_browser = nullptr;
-    }
+    shell_browser.reset();
 
     wnd = nullptr;
 
