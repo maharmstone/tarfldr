@@ -23,3 +23,5 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_PREFIX_PATH /usr/i686-w64-mingw32/usr/lib/cmake)
 
 set(CMAKE_SYSTEM_PROCESSOR x86)
+
+add_link_options(-Wl,--enable-stdcall-fixup)
