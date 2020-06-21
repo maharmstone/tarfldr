@@ -52,9 +52,7 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     else if (iid == IID_IObjectWithFolderEnumMode)
         *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
     else {
-        string msg = fmt::format("shell_folder::QueryInterface: unsupported interface {}", iid);
-
-        OutputDebugStringA(msg.c_str());
+        debug("shell_folder::QueryInterface: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -89,8 +87,19 @@ HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppe
     return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
 }
 
-HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFIID riid, void** ppv) {
+    if (riid == IID_IShellFolder) {
+        // FIXME - parse pidl and check valid
+
+        auto sf = new shell_folder(tar); // FIXME - parse pidl
+
+        return sf->QueryInterface(riid, ppv);
+    }
+
+    debug("shell_folder::BindToObject: unsupported interface {}", riid);
+
+    *ppv = nullptr;
+    return E_NOINTERFACE;
 }
 
 HRESULT shell_folder::BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv) {
@@ -276,9 +285,7 @@ HRESULT shell_enum::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IEnumIDList)
         *ppv = static_cast<IEnumIDList*>(this);
     else {
-        string msg = fmt::format("shell_enum::QueryInterface: unsupported interface {}", iid);
-
-        OutputDebugStringA(msg.c_str());
+        debug("shell_enum::QueryInterface: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
