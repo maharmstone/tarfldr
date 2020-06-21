@@ -133,17 +133,17 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
 }
 
 tar_item& shell_folder::get_item_from_pidl_child(const ITEMID_CHILD* pidl) {
-    size_t index;
-
-    if (pidl->mkid.cb != offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t))
+    if (pidl->mkid.cb < offsetof(ITEMIDLIST, mkid.abID))
         throw invalid_argument("");
 
-    index = *(size_t*)(pidl->mkid.abID);
+    string_view sv{(char*)pidl->mkid.abID, pidl->mkid.cb - offsetof(ITEMIDLIST, mkid.abID)};
 
-    if (index >= tar->items.size())
-        throw invalid_argument("");
+    for (auto& it : tar->items) {
+        if (it.name == sv)
+            return it;
+    }
 
-    return tar->items[index];
+    throw invalid_argument("");
 }
 
 HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut) {
@@ -337,10 +337,13 @@ ULONG shell_enum::Release() {
 }
 
 ITEMID_CHILD* tar_item::make_pidl_child() const {
-    auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t));
+    auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + name.length());
 
-    item->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t);
-    *(size_t*)item->mkid.abID = file_num;
+    if (!item)
+        throw bad_alloc();
+
+    item->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + name.length();
+    memcpy(item->mkid.abID, name.data(), name.length());
 
     return item;
 }
