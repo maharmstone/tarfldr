@@ -55,7 +55,12 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     else if (iid == IID_IObjectWithFolderEnumMode)
         *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
     else {
-        debug("shell_folder::QueryInterface: unsupported interface {}", iid);
+        if (iid == IID_IExplorerPaneVisibility)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IExplorerPaneVisibility");
+        else if (iid == IID_IPersistIDList)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IPersistIDList");
+        else
+            debug("shell_folder::QueryInterface: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -188,7 +193,12 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
         return sf->QueryInterface(riid, ppv);
     }
 
-    debug("shell_folder::BindToObject: unsupported interface {}", riid);
+    if (riid == IID_IPropertyStoreFactory)
+        debug("shell_folder::BindToObject: unsupported interface IID_IPropertyStoreFactory");
+    else if (riid == IID_IPropertyStore)
+        debug("shell_folder::BindToObject: unsupported interface IID_IPropertyStore");
+    else
+        debug("shell_folder::BindToObject: unsupported interface {}", riid);
 
     *ppv = nullptr;
     return E_NOINTERFACE;
@@ -274,7 +284,10 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
         }
     }
 
-    debug("shell_folder::GetUIObjectOf: unsupported interface {}", riid);
+    if (riid == IID_IContextMenu)
+        debug("shell_folder::GetUIObjectOf: unsupported interface IID_IContextMenu");
+    else
+        debug("shell_folder::GetUIObjectOf: unsupported interface {}", riid);
 
     *ppv = nullptr;
     return E_NOINTERFACE;
