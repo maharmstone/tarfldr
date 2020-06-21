@@ -28,6 +28,8 @@ typedef struct {
     std::u16string name;
     int fmt;
     int cxChar;
+    const GUID* fmtid;
+    DWORD pid;
 } header_info;
 
 class tar_item {

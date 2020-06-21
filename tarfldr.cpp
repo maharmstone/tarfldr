@@ -2,6 +2,7 @@
 
 #include <initguid.h>
 #include <commoncontrols.h>
+#include <ntquery.h>
 #include <shlobj.h>
 #include <span>
 
@@ -10,10 +11,10 @@ using namespace std;
 static const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
 
 static const header_info headers[] = { // FIXME - move strings to resource file
-    { u"Name", LVCFMT_LEFT, 15 },
-    { u"Size", LVCFMT_RIGHT, 10 },
-    { u"Type", LVCFMT_LEFT, 10 },
-    { u"Modified", LVCFMT_LEFT, 12 },
+    { u"Name", LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME },
+    { u"Size", LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE },
+    { u"Type", LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE },
+    { u"Modified", LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME },
 };
 
 LONG objs_loaded = 0;
@@ -353,8 +354,16 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_folder::MapColumnToSCID(UINT iColumn, SHCOLUMNID *pscid) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::MapColumnToSCID(UINT iColumn, SHCOLUMNID* pscid) {
+    span sp = headers;
+
+    if (iColumn >= sp.size())
+        return E_INVALIDARG;
+
+    pscid->fmtid = *headers[iColumn].fmtid;
+    pscid->pid = headers[iColumn].pid;
+
+    return S_OK;
 }
 
 HRESULT shell_folder::GetClassID(CLSID* pClassID) {
