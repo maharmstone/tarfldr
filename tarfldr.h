@@ -30,11 +30,16 @@ typedef struct {
     int cxChar;
 } header_info;
 
-struct tar_item {
-    tar_item(const std::string_view& name, bool dir) : name(name), dir(dir) { }
+class tar_item {
+public:
+    tar_item(const std::string_view& name, size_t file_num, bool dir) : name(name), file_num(file_num), dir(dir) { }
+
+    ITEMID_CHILD* make_pidl_child() const;
 
     std::string name;
+    size_t file_num;
     bool dir;
+    std::vector<tar_item> children;
 };
 
 class tar_info {
@@ -93,6 +98,8 @@ public:
     HRESULT __stdcall GetMode(FOLDER_ENUM_MODE *pfeMode);
 
 private:
+    tar_item& get_item_from_pidl_child(const ITEMID_CHILD* pidl);
+
     LONG refcount = 0;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
     std::shared_ptr<tar_info> tar;

@@ -35,9 +35,12 @@ static void debug(const string_view& s, Args&&... args) {
 tar_info::tar_info(const std::filesystem::path& fn) {
     // FIXME
 
-    items.emplace_back("hello.txt", false);
-    items.emplace_back("world.png", false);
-    items.emplace_back("dir", true);
+    items.emplace_back("hello.txt", 0, false);
+    items.emplace_back("world.png", 1, false);
+    items.emplace_back("dir", 2, true);
+    items.back().children.emplace_back("a.txt", 0, false);
+    items.back().children.emplace_back("subdir", 1, true);
+    items.back().children.back().children.emplace_back("b.txt", 0, false);
 }
 
 extern "C" STDAPI DllCanUnloadNow(void) {
@@ -78,6 +81,9 @@ ULONG shell_folder::Release() {
 
 HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
                                        PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes) {
+    debug("shell_folder::ParseDisplayName({}, {}, {}, {}, {}, {})", (void*)hwnd, (void*)pbc, pszDisplayName ? utf16_to_utf8((char16_t*)pszDisplayName) : "",
+                                                                    (void*)pchEaten, (void*)ppidl, (void*)pdwAttributes);
+
     UNIMPLEMENTED; // FIXME
 }
 
@@ -126,58 +132,66 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
     return E_NOINTERFACE;
 }
 
+tar_item& shell_folder::get_item_from_pidl_child(const ITEMID_CHILD* pidl) {
+    size_t index;
+
+    if (pidl->mkid.cb != offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t))
+        throw invalid_argument("");
+
+    index = *(size_t*)(pidl->mkid.abID);
+
+    if (index >= tar->items.size())
+        throw invalid_argument("");
+
+    return tar->items[index];
+}
+
 HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut) {
-    SFGAOF common_atts = *rgfInOut;
+    try {
+        SFGAOF common_atts = *rgfInOut;
 
-    while (cidl > 0) {
-        SFGAOF atts;
-        size_t index;
+        while (cidl > 0) {
+            SFGAOF atts;
 
-        if (apidl[0]->mkid.cb != offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t))
-            return E_INVALIDARG;
+            const auto& item = get_item_from_pidl_child(apidl[0]);
 
-        index = *(size_t*)(apidl[0]->mkid.abID);
+            if (item.dir) {
+                atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
+                atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
+            } else
+                atts = SFGAO_STREAM;
 
-        if (index >= tar->items.size())
-            return E_INVALIDARG;
+            // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
 
-        const auto& item = tar->items[index];
+            common_atts &= atts;
 
-        if (item.dir) {
-            atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
-            atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
-        } else
-            atts = SFGAO_STREAM;
+            cidl--;
+            apidl++;
+        }
 
-        // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
+        *rgfInOut = common_atts;
 
-        common_atts &= atts;
-
-        cidl--;
-        apidl++;
+        return S_OK;
+    } catch (const invalid_argument&) {
+        return E_INVALIDARG;
     }
-
-    *rgfInOut = common_atts;
-
-    return S_OK;
 }
 
 HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
                                     UINT* rgfReserved, void** ppv) {
     if (riid == IID_IExtractIconW || riid == IID_IExtractIconA) {
-        if (cidl != 1)
+        try {
+            if (cidl != 1)
+                return E_INVALIDARG;
+
+            const auto& item = get_item_from_pidl_child(apidl[0]);
+
+            return SHCreateFileExtractIconW((LPCWSTR)utf8_to_utf16(item.name).c_str(),
+                                            item.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                                            riid, ppv);
+        } catch (const invalid_argument&) {
             return E_INVALIDARG;
-
-        size_t index = *(size_t*)(apidl[0]->mkid.abID);
-
-        if (index >= tar->items.size())
-            return E_INVALIDARG;
-
-        const auto& item = tar->items[index];
-
-        return SHCreateFileExtractIconW((LPCWSTR)utf8_to_utf16(item.name).c_str(),
-                                        item.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
-                                        riid, ppv);
+        }
     }
 
     debug("shell_folder::GetUIObjectOf: unsupported interface {}", riid);
@@ -187,25 +201,19 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
 }
 
 HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName) {
-    size_t index;
+    try {
+        const auto& item = get_item_from_pidl_child(pidl);
 
-    if (pidl->mkid.cb != offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t))
+        auto u16name = utf8_to_utf16(item.name);
+
+        pName->uType = STRRET_WSTR;
+        pName->pOleStr = (WCHAR*)CoTaskMemAlloc((u16name.length() + 1) * sizeof(char16_t));
+        memcpy(pName->pOleStr, u16name.c_str(), (u16name.length() + 1) * sizeof(char16_t));
+
+        return S_OK;
+    } catch (const invalid_argument&) {
         return E_INVALIDARG;
-
-    index = *(size_t*)pidl->mkid.abID;
-
-    if (index >= tar->items.size())
-        return E_INVALIDARG;
-
-    const auto& item = tar->items[index];
-
-    auto u16name = utf8_to_utf16(item.name);
-
-    pName->uType = STRRET_WSTR;
-    pName->pOleStr = (WCHAR*)CoTaskMemAlloc((u16name.length() + 1) * sizeof(char16_t));
-    memcpy(pName->pOleStr, u16name.c_str(), (u16name.length() + 1) * sizeof(char16_t));
-
-    return S_OK;
+    }
 }
 
 HRESULT shell_folder::SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
@@ -328,31 +336,36 @@ ULONG shell_enum::Release() {
     return rc;
 }
 
+ITEMID_CHILD* tar_item::make_pidl_child() const {
+    auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t));
+
+    item->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t);
+    *(size_t*)item->mkid.abID = file_num;
+
+    return item;
+}
+
 HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) {
-    if (pceltFetched)
-        *pceltFetched = 0;
-
-    // FIXME - only show folders or non-folders as requested
-
-    while (celt > 0 && index < tar->items.size()) {
-        auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t));
-
-        if (!item)
-            return E_OUTOFMEMORY;
-
-        *rgelt = item;
-
-        item->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t);
-        *(size_t*)item->mkid.abID = index;
-
-        celt--;
-        index++;
-
+    try {
         if (pceltFetched)
-            *pceltFetched++;
-    }
+            *pceltFetched = 0;
 
-    return celt == 0 ? S_OK : S_FALSE;
+        // FIXME - only show folders or non-folders as requested
+
+        while (celt > 0 && index < tar->items.size()) {
+            *rgelt = tar->items[index].make_pidl_child();
+
+            celt--;
+            index++;
+
+            if (pceltFetched)
+                *pceltFetched++;
+        }
+
+        return celt == 0 ? S_OK : S_FALSE;
+    } catch (const bad_alloc&) {
+        return E_OUTOFMEMORY;
+    }
 }
 
 HRESULT shell_enum::Skip(ULONG celt) {
