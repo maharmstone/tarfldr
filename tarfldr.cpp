@@ -24,7 +24,7 @@ HINSTANCE instance = nullptr;
 // FIXME - installer
 
 template<typename... Args>
-static void debug(const string_view& s, Args&&... args) {
+static void debug(const string_view& s, Args&&... args) { // FIXME - only if compiled in Debug mode
     string msg;
 
     msg = fmt::format(s, forward<Args>(args)...);
@@ -32,15 +32,15 @@ static void debug(const string_view& s, Args&&... args) {
     OutputDebugStringA(msg.c_str());
 }
 
-tar_info::tar_info(const std::filesystem::path& fn) {
+tar_info::tar_info(const std::filesystem::path& fn) : root("", true) {
     // FIXME
 
-    items.emplace_back("hello.txt", 0, false);
-    items.emplace_back("world.png", 1, false);
-    items.emplace_back("dir", 2, true);
-    items.back().children.emplace_back("a.txt", 0, false);
-    items.back().children.emplace_back("subdir", 1, true);
-    items.back().children.back().children.emplace_back("b.txt", 0, false);
+    root.children.emplace_back("hello.txt", false);
+    root.children.emplace_back("world.png", false);
+    root.children.emplace_back("dir", true);
+    root.children.back().children.emplace_back("a.txt", false);
+    root.children.back().children.emplace_back("subdir", true);
+    root.children.back().children.back().children.emplace_back("b.txt", false);
 }
 
 extern "C" STDAPI DllCanUnloadNow(void) {
@@ -79,12 +79,98 @@ ULONG shell_folder::Release() {
     return rc;
 }
 
-HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
-                                       PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes) {
-    debug("shell_folder::ParseDisplayName({}, {}, {}, {}, {}, {})", (void*)hwnd, (void*)pbc, pszDisplayName ? utf16_to_utf8((char16_t*)pszDisplayName) : "",
+HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDisplayName, ULONG* pchEaten,
+                                       PIDLIST_RELATIVE* ppidl, ULONG* pdwAttributes) {
+    if (!pszDisplayName || !ppidl)
+        return E_INVALIDARG;
+
+    debug("shell_folder::ParseDisplayName({}, {}, {}, {}, {}, {})", (void*)hwnd, (void*)pbc, utf16_to_utf8((char16_t*)pszDisplayName),
                                                                     (void*)pchEaten, (void*)ppidl, (void*)pdwAttributes);
 
-    UNIMPLEMENTED; // FIXME
+    // split by backslash
+
+    vector<u16string_view> parts;
+
+    {
+        u16string_view left = (char16_t*)pszDisplayName;
+
+        do {
+            bool found = false;
+
+            for (unsigned int i = 0; i < left.size(); i++) {
+                if (left[i] == '\\') {
+                    if (i != 0)
+                        parts.emplace_back(left.data(), i);
+
+                    left = left.substr(i + 1);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                parts.emplace_back(left);
+                break;
+            }
+        } while (true);
+    }
+
+    // loop and compare case-insensitively
+
+    tar_item* r = &tar->root;
+    vector<tar_item*> found_list;
+
+    if (pchEaten)
+        *pchEaten = 0;
+
+    for (const auto& p : parts) {
+        tar_item* c;
+
+        r->find_child(p, &c);
+
+        if (!c)
+            break;
+
+        found_list.emplace_back(c);
+        r = c;
+
+        if (pchEaten) {
+            *pchEaten = (p.data() + p.length()) - (const char16_t*)pszDisplayName;
+
+            while (pszDisplayName[*pchEaten] == '\\') {
+                (*pchEaten)++;
+            }
+        }
+    }
+
+    if (found_list.empty())
+        return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+
+    // create PIDL
+
+    size_t pidl_length = 0;
+
+    for (auto fl : found_list) {
+        pidl_length += offsetof(ITEMIDLIST, mkid.abID) + fl->name.length();
+    }
+
+    auto pidl = (ITEMIDLIST*)CoTaskMemAlloc(pidl_length);
+
+    if (!pidl)
+        return E_OUTOFMEMORY;
+
+    *ppidl = pidl;
+
+    for (auto fl : found_list) {
+        pidl->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + fl->name.length();
+        memcpy(pidl->mkid.abID, fl->name.data(), fl->name.length());
+        pidl = (ITEMIDLIST*)((uint8_t*)pidl + pidl->mkid.cb);
+    }
+
+    if (pdwAttributes && found_list.size() == parts.size())
+        *pdwAttributes &= found_list.back()->get_atts();
+
+    return S_OK;
 }
 
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
@@ -138,7 +224,7 @@ tar_item& shell_folder::get_item_from_pidl_child(const ITEMID_CHILD* pidl) {
 
     string_view sv{(char*)pidl->mkid.abID, pidl->mkid.cb - offsetof(ITEMIDLIST, mkid.abID)};
 
-    for (auto& it : tar->items) {
+    for (auto& it : tar->root.children) {
         if (it.name == sv)
             return it;
     }
@@ -155,13 +241,7 @@ HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SF
 
             const auto& item = get_item_from_pidl_child(apidl[0]);
 
-            if (item.dir) {
-                atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
-                atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
-            } else
-                atts = SFGAO_STREAM;
-
-            // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
+            atts = item.get_atts();
 
             common_atts &= atts;
 
@@ -348,6 +428,35 @@ ITEMID_CHILD* tar_item::make_pidl_child() const {
     return item;
 }
 
+void tar_item::find_child(const std::u16string_view& name, tar_item** ret) {
+    u16string n{name};
+
+    for (auto& c : children) {
+        auto cn = utf8_to_utf16(c.name);
+
+        if (!_wcsicmp((wchar_t*)n.c_str(), (wchar_t*)cn.c_str())) {
+            *ret = &c;
+            return;
+        }
+    }
+
+    *ret = nullptr;
+}
+
+SFGAOF tar_item::get_atts() const {
+    SFGAOF atts;
+
+    if (dir) {
+        atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
+        atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
+    } else
+        atts = SFGAO_STREAM;
+
+    // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
+
+    return atts;
+}
+
 HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) {
     try {
         if (pceltFetched)
@@ -355,8 +464,8 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
 
         // FIXME - only show folders or non-folders as requested
 
-        while (celt > 0 && index < tar->items.size()) {
-            *rgelt = tar->items[index].make_pidl_child();
+        while (celt > 0 && index < tar->root.children.size()) {
+            *rgelt = tar->root.children[index].make_pidl_child();
 
             celt--;
             index++;

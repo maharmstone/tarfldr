@@ -32,12 +32,13 @@ typedef struct {
 
 class tar_item {
 public:
-    tar_item(const std::string_view& name, size_t file_num, bool dir) : name(name), file_num(file_num), dir(dir) { }
+    tar_item(const std::string_view& name, bool dir) : name(name), dir(dir) { }
 
     ITEMID_CHILD* make_pidl_child() const;
+    void find_child(const std::u16string_view& name, tar_item** ret);
+    SFGAOF get_atts() const;
 
     std::string name;
-    size_t file_num;
     bool dir;
     std::vector<tar_item> children;
 };
@@ -46,7 +47,7 @@ class tar_info {
 public:
     tar_info(const std::filesystem::path& fn);
 
-    std::vector<tar_item> items;
+    tar_item root;
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
@@ -63,8 +64,8 @@ public:
 
     // IShellFolder2
 
-    HRESULT __stdcall ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDisplayName, ULONG *pchEaten,
-                                       PIDLIST_RELATIVE *ppidl, ULONG *pdwAttributes);
+    HRESULT __stdcall ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDisplayName, ULONG* pchEaten,
+                                       PIDLIST_RELATIVE* ppidl, ULONG* pdwAttributes);
     HRESULT __stdcall EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList **ppenumIDList);
     HRESULT __stdcall BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFIID riid, void** ppv);
     HRESULT __stdcall BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFIID riid, void **ppv);
