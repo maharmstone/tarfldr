@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <filesystem>
 #include <stdint.h>
 #include <shlguid.h>
 #include <fmt/format.h>
@@ -36,9 +37,17 @@ struct tar_item {
     bool dir;
 };
 
+class tar_info {
+public:
+    tar_info(const std::filesystem::path& fn);
+
+    std::vector<tar_item> items;
+};
+
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
 public:
-    shell_folder();
+    shell_folder(const std::filesystem::path& fn) : tar(new tar_info(fn)) { }
+    shell_folder(const std::shared_ptr<tar_info>& tar) : tar(tar) { }
     virtual ~shell_folder();
 
     // IUnknown
@@ -85,17 +94,14 @@ public:
 
 private:
     LONG refcount = 0;
-    std::vector<uint8_t> item_id_buf;
-    SHITEMID* item_id = nullptr;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
-    std::vector<tar_item> items;
+    std::shared_ptr<tar_info> tar;
     PIDLIST_ABSOLUTE root_pidl = nullptr;
 };
 
 class shell_enum : public IEnumIDList {
 public:
-    shell_enum(const std::vector<tar_item>& items, SHCONTF flags): items(items), flags(flags) {
-    }
+    shell_enum(const std::shared_ptr<tar_info>& tar, SHCONTF flags): tar(tar), flags(flags) { }
 
     // IUnknown
 
@@ -112,7 +118,7 @@ public:
 
 private:
     SHCONTF flags;
-    std::vector<tar_item> items;
+    std::shared_ptr<tar_info> tar;
     LONG refcount = 0;
     size_t index = 0;
 };

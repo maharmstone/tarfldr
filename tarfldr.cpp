@@ -23,6 +23,23 @@ HINSTANCE instance = nullptr;
 
 // FIXME - installer
 
+template<typename... Args>
+static void debug(const string_view& s, Args&&... args) {
+    string msg;
+
+    msg = fmt::format(s, forward<Args>(args)...);
+
+    OutputDebugStringA(msg.c_str());
+}
+
+tar_info::tar_info(const std::filesystem::path& fn) {
+    // FIXME
+
+    items.emplace_back("hello.txt", false);
+    items.emplace_back("world.png", false);
+    items.emplace_back("dir", true);
+}
+
 extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
@@ -67,7 +84,7 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx *pbc, LPWSTR pszDispl
 }
 
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
-    shell_enum* se = new shell_enum(items, grfFlags);
+    shell_enum* se = new shell_enum(tar, grfFlags);
 
     return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
 }
@@ -112,10 +129,10 @@ HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SF
 
         index = *(size_t*)(apidl[0]->mkid.abID);
 
-        if (index >= items.size())
+        if (index >= tar->items.size())
             return E_INVALIDARG;
 
-        const auto& item = items[index];
+        const auto& item = tar->items[index];
 
         if (item.dir) {
             atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
@@ -149,10 +166,10 @@ HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRR
 
     index = *(size_t*)pidl->mkid.abID;
 
-    if (index >= items.size())
+    if (index >= tar->items.size())
         return E_INVALIDARG;
 
-    const auto& item = items[index];
+    const auto& item = tar->items[index];
 
     auto u16name = utf8_to_utf16(item.name);
 
@@ -291,7 +308,7 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
 
     // FIXME - only show folders or non-folders as requested
 
-    while (celt > 0 && index < items.size()) {
+    while (celt > 0 && index < tar->items.size()) {
         auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + sizeof(size_t));
 
         if (!item)
@@ -324,14 +341,6 @@ HRESULT shell_enum::Reset() {
 
 HRESULT shell_enum::Clone(IEnumIDList** ppenum) {
     UNIMPLEMENTED; // FIXME
-}
-
-shell_folder::shell_folder() {
-    // FIXME
-
-    items.emplace_back("hello.txt", false);
-    items.emplace_back("world.png", false);
-    items.emplace_back("dir", true);
 }
 
 shell_folder::~shell_folder() {
@@ -381,16 +390,14 @@ public:
 
     HRESULT __stdcall CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
         if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2) {
-            shell_folder* sf = new shell_folder;
+            shell_folder* sf = new shell_folder("C:\\test.tar"); // FIXME
             if (!sf)
                 return E_OUTOFMEMORY;
 
             return sf->QueryInterface(iid, ppv);
         }
 
-        string msg = fmt::format("factor::CreateInstance: unsupported interface {}", iid);
-
-        OutputDebugStringA(msg.c_str());
+        debug("factor::CreateInstance: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
