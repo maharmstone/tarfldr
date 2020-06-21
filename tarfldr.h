@@ -67,7 +67,7 @@ public:
     HRESULT __stdcall CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv);
     HRESULT __stdcall GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut);
     HRESULT __stdcall GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
-                                    UINT *rgfReserved, void **ppv);
+                                    UINT* rgfReserved, void** ppv);
     HRESULT __stdcall GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName);
     HRESULT __stdcall SetNameOf(HWND hwnd, PCUITEMID_CHILD pidl, LPCWSTR pszName, SHGDNF uFlags,
                                 PITEMID_CHILD *ppidlOut);

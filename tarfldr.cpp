@@ -163,8 +163,27 @@ HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SF
 }
 
 HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
-                                    UINT *rgfReserved, void **ppv) {
-    UNIMPLEMENTED; // FIXME
+                                    UINT* rgfReserved, void** ppv) {
+    if (riid == IID_IExtractIconW || riid == IID_IExtractIconA) {
+        if (cidl != 1)
+            return E_INVALIDARG;
+
+        size_t index = *(size_t*)(apidl[0]->mkid.abID);
+
+        if (index >= tar->items.size())
+            return E_INVALIDARG;
+
+        const auto& item = tar->items[index];
+
+        return SHCreateFileExtractIconW((LPCWSTR)utf8_to_utf16(item.name).c_str(),
+                                        item.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                                        riid, ppv);
+    }
+
+    debug("shell_folder::GetUIObjectOf: unsupported interface {}", riid);
+
+    *ppv = nullptr;
+    return E_NOINTERFACE;
 }
 
 HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName) {
