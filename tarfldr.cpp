@@ -561,7 +561,26 @@ ULONG shell_context_menu::Release() {
 
 HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
                                              UINT idCmdLast, UINT uFlags) {
-    UNIMPLEMENTED; // FIXME
+    UINT cmd = idCmdFirst;
+    MENUITEMINFOW mii;
+
+    debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {})", (void*)hmenu, indexMenu, idCmdFirst,
+          idCmdLast, uFlags);
+
+    mii.cbSize = sizeof(mii);
+    mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
+    mii.fType = MFT_STRING;
+    mii.fState = MFS_DEFAULT;
+    mii.wID = cmd;
+    mii.dwTypeData = L"&Open"; // FIXME - get from resource file
+
+    // FIXME - others: Extract, Cut, Copy, Paste, Properties
+
+    InsertMenuItemW(hmenu, indexMenu, true, &mii);
+
+    cmd++;
+
+    return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, cmd - idCmdFirst);
 }
 
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
