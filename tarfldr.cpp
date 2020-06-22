@@ -283,12 +283,22 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
         } catch (const invalid_argument&) {
             return E_INVALIDARG;
         }
+    } else if (riid == IID_IContextMenu) {
+        try {
+            if (cidl != 1)
+                return E_INVALIDARG;
+
+            const auto& item = get_item_from_pidl_child(apidl[0]);
+
+            auto scm = new shell_context_menu; // FIXME - constructor
+
+            return scm->QueryInterface(riid, ppv);
+        } catch (const invalid_argument&) {
+            return E_INVALIDARG;
+        }
     }
 
-    if (riid == IID_IContextMenu)
-        debug("shell_folder::GetUIObjectOf: unsupported interface IID_IContextMenu");
-    else
-        debug("shell_folder::GetUIObjectOf: unsupported interface {}", riid);
+    debug("shell_folder::GetUIObjectOf: unsupported interface {}", riid);
 
     *ppv = nullptr;
     return E_NOINTERFACE;
@@ -519,6 +529,48 @@ HRESULT shell_enum::Clone(IEnumIDList** ppenum) {
 shell_folder::~shell_folder() {
     if (root_pidl)
         CoTaskMemFree(root_pidl);
+}
+
+HRESULT shell_context_menu::QueryInterface(REFIID iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_IContextMenu)
+        *ppv = static_cast<IContextMenu*>(this);
+    else {
+        debug("shell_context_menu::QueryInterface: unsupported interface {}", iid);
+
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    reinterpret_cast<IUnknown*>(*ppv)->AddRef();
+
+    return S_OK;
+}
+
+ULONG shell_context_menu::AddRef() {
+    return InterlockedIncrement(&refcount);
+}
+
+ULONG shell_context_menu::Release() {
+    LONG rc = InterlockedDecrement(&refcount);
+
+    if (rc == 0)
+        delete this;
+
+    return rc;
+}
+
+HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
+                                             UINT idCmdLast, UINT uFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
+                                             CHAR* pszName, UINT cchMax) {
+    UNIMPLEMENTED; // FIXME
 }
 
 class factory : public IClassFactory {

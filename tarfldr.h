@@ -133,6 +133,26 @@ private:
     size_t index = 0;
 };
 
+class shell_context_menu : public IContextMenu {
+public:
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // IContextMenu
+
+    HRESULT __stdcall QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
+                                       UINT idCmdLast, UINT uFlags);
+    HRESULT __stdcall InvokeCommand(CMINVOKECOMMANDINFO* pici);
+    HRESULT __stdcall GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
+                                       CHAR* pszName, UINT cchMax);
+
+private:
+    LONG refcount = 0;
+};
+
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
     std::u16string ret;
 
