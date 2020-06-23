@@ -457,13 +457,16 @@ ULONG shell_enum::Release() {
 }
 
 ITEMID_CHILD* tar_item::make_pidl_child() const {
-    auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + name.length());
+    auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + name.length() + offsetof(ITEMIDLIST, mkid.abID));
 
     if (!item)
         throw bad_alloc();
 
     item->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + name.length();
     memcpy(item->mkid.abID, name.data(), name.length());
+
+    auto nextitem = (ITEMIDLIST*)((uint8_t*)item + item->mkid.cb);
+    nextitem->mkid.cb = 0;
 
     return item;
 }
