@@ -135,6 +135,9 @@ private:
 
 class shell_context_menu : public IContextMenu {
 public:
+    shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir);
+    virtual ~shell_context_menu();
+
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
@@ -151,6 +154,8 @@ public:
 
 private:
     LONG refcount = 0;
+    PIDLIST_ABSOLUTE pidl;
+    bool is_dir;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {

@@ -292,9 +292,13 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
             if (cidl != 1)
                 return E_INVALIDARG;
 
+            auto pidl = ILCombine(root_pidl, apidl[0]);
+
             const auto& item = get_item_from_pidl_child(apidl[0]);
 
-            auto scm = new shell_context_menu; // FIXME - constructor
+            auto scm = new shell_context_menu(pidl, item.dir);
+
+            ILFree(pidl);
 
             return scm->QueryInterface(riid, ppv);
         } catch (const invalid_argument&) {
@@ -535,6 +539,15 @@ shell_folder::~shell_folder() {
         CoTaskMemFree(root_pidl);
 }
 
+shell_context_menu::shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir) : is_dir(is_dir) {
+    this->pidl = ILCloneFull(pidl);
+}
+
+shell_context_menu::~shell_context_menu() {
+    if (pidl)
+        ILFree(pidl);
+}
+
 HRESULT shell_context_menu::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IContextMenu)
         *ppv = static_cast<IContextMenu*>(this);
@@ -597,7 +610,23 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
           (void*)pici->hIcon);
 
     if ((IS_INTRESOURCE(pici->lpVerb) && pici->lpVerb == 0) || (!IS_INTRESOURCE(pici->lpVerb) && !strcmp(pici->lpVerb, OPEN_VERBA))) {
-        MessageBoxW(pici->hwnd, L"FIXME - open file", L"Error", MB_ICONERROR); // FIXME
+        if (is_dir) {
+            SHELLEXECUTEINFOW sei;
+
+            memset(&sei, 0, sizeof(sei));
+            sei.cbSize = sizeof(sei);
+            sei.fMask = SEE_MASK_IDLIST | SEE_MASK_CLASSNAME;
+            sei.lpIDList = pidl;
+            sei.lpClass = L"Folder";
+            sei.hwnd = pici->hwnd;
+            sei.nShow = SW_SHOWNORMAL;
+            sei.lpVerb = L"open";
+            ShellExecuteExW(&sei);
+        } else {
+            // FIXME - extract and open using normal handler
+            MessageBoxW(pici->hwnd, L"FIXME - open file", L"Error", MB_ICONERROR); // FIXME
+        }
+
         return S_OK;
     }
 
