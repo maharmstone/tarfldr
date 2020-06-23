@@ -54,8 +54,8 @@ public:
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
 public:
-    shell_folder(const std::filesystem::path& fn) : tar(new tar_info(fn)) { }
-    shell_folder(const std::shared_ptr<tar_info>& tar) : tar(tar) { }
+    shell_folder() { }
+    shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl);
     virtual ~shell_folder();
 
     // IUnknown
@@ -106,12 +106,13 @@ private:
     LONG refcount = 0;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
     std::shared_ptr<tar_info> tar;
+    tar_item* root;
     PIDLIST_ABSOLUTE root_pidl = nullptr;
 };
 
 class shell_enum : public IEnumIDList {
 public:
-    shell_enum(const std::shared_ptr<tar_info>& tar, SHCONTF flags): tar(tar), flags(flags) { }
+    shell_enum(const std::shared_ptr<tar_info>& tar, tar_item* root, SHCONTF flags): tar(tar), root(root), flags(flags) { }
 
     // IUnknown
 
@@ -129,6 +130,7 @@ public:
 private:
     SHCONTF flags;
     std::shared_ptr<tar_info> tar;
+    tar_item* root;
     LONG refcount = 0;
     size_t index = 0;
 };

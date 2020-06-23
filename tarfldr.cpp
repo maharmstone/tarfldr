@@ -127,7 +127,7 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
 
     // loop and compare case-insensitively
 
-    tar_item* r = &tar->root;
+    tar_item* r = root;
     vector<tar_item*> found_list;
 
     if (pchEaten)
@@ -184,16 +184,47 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
 }
 
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
-    shell_enum* se = new shell_enum(tar, grfFlags);
+    shell_enum* se = new shell_enum(tar, root, grfFlags);
 
     return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
 }
 
 HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFIID riid, void** ppv) {
-    if (riid == IID_IShellFolder) {
-        // FIXME - parse pidl and check valid
+    debug("shell_folder::BindToObject({}, {}, {}, {})", (void*)pidl, (void*)pbc, riid, (void*)ppv);
 
-        auto sf = new shell_folder(tar); // FIXME - parse pidl
+    if (riid == IID_IShellFolder) {
+        tar_item* item = root;
+
+        if (pidl) {
+            const SHITEMID* sh = &pidl->mkid;
+
+            while (sh->cb != 0) {
+                string_view name{(char*)sh->abID, sh->cb - offsetof(SHITEMID, abID)};
+                bool found = false;
+
+                for (auto& it : item->children) {
+                    if (it.name == name) {
+                        found = true;
+                        item = &it;
+                        break;
+                    }
+                }
+
+                if (!found)
+                    return E_NOINTERFACE;
+
+                sh = (SHITEMID*)((uint8_t*)sh + sh->cb);
+            }
+        }
+
+        if (!item->dir)
+            return E_NOINTERFACE;
+
+        auto new_pidl = ILCombine(root_pidl, pidl);
+
+        auto sf = new shell_folder(tar, item, new_pidl);
+
+        ILFree(new_pidl);
 
         return sf->QueryInterface(riid, ppv);
     }
@@ -239,7 +270,7 @@ tar_item& shell_folder::get_item_from_pidl_child(const ITEMID_CHILD* pidl) {
 
     string_view sv{(char*)pidl->mkid.abID, pidl->mkid.cb - offsetof(ITEMIDLIST, mkid.abID)};
 
-    for (auto& it : tar->root.children) {
+    for (auto& it : root->children) {
         if (it.name == sv)
             return it;
     }
@@ -404,6 +435,31 @@ HRESULT shell_folder::GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
 }
 
 HRESULT shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti) {
+    HRESULT hr;
+    WCHAR path[MAX_PATH];
+
+    debug("shell_folder::InitializeEx({}, {},{})", (void*)pbc, (void*)pidlRoot, (void*)ppfti);
+
+    if (ppfti) {
+        debug("shell_folder::InitializeEx: ppfti (pidlTargetFolder = {}, szTargetParsingName = {}, szNetworkProvider = {}, dwAttributes = {}, csidl = {})",
+              (void*)ppfti->pidlTargetFolder, utf16_to_utf8((char16_t*)ppfti->szTargetParsingName),
+              utf16_to_utf8((char16_t*)ppfti->szNetworkProvider), ppfti->dwAttributes, ppfti->csidl);
+    }
+
+    if (!SHGetPathFromIDListW(pidlRoot, path)) {
+        debug("SHGetPathFromIDListW failed");
+        return E_FAIL;
+    }
+
+    try {
+        tar.reset(new tar_info(path));
+    } catch (const exception& e) {
+        debug("shell_folder::InitializeEx: {}", e.what());
+        return E_FAIL;
+    }
+
+    root = &tar->root;
+
     root_pidl = ILCloneFull(pidlRoot);
 
     return S_OK;
@@ -507,8 +563,8 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
 
         // FIXME - only show folders or non-folders as requested
 
-        while (celt > 0 && index < tar->root.children.size()) {
-            *rgelt = tar->root.children[index].make_pidl_child();
+        while (celt > 0 && index < root->children.size()) {
+            *rgelt = root->children[index].make_pidl_child();
 
             celt--;
             index++;
@@ -535,6 +591,10 @@ HRESULT shell_enum::Reset() {
 
 HRESULT shell_enum::Clone(IEnumIDList** ppenum) {
     UNIMPLEMENTED; // FIXME
+}
+
+shell_folder::shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl) : tar(tar), root(root) {
+    root_pidl = ILCloneFull(pidl);
 }
 
 shell_folder::~shell_folder() {
@@ -701,7 +761,7 @@ public:
 
     HRESULT __stdcall CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
         if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2) {
-            shell_folder* sf = new shell_folder("C:\\test.tar"); // FIXME
+            shell_folder* sf = new shell_folder;
             if (!sf)
                 return E_OUTOFMEMORY;
 
