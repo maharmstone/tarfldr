@@ -4,6 +4,7 @@
 #include <commoncontrols.h>
 #include <ntquery.h>
 #include <shlobj.h>
+#include <strsafe.h>
 #include <span>
 
 using namespace std;
@@ -19,6 +20,9 @@ static const header_info headers[] = { // FIXME - move strings to resource file
 
 LONG objs_loaded = 0;
 HINSTANCE instance = nullptr;
+
+#define OPEN_VERBA "Open"
+#define OPEN_VERBW u"Open"
 
 #define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + " stub"s).c_str()); return E_NOTIMPL;
 
@@ -564,7 +568,7 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
     UINT cmd = idCmdFirst;
     MENUITEMINFOW mii;
 
-    debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {})", (void*)hmenu, indexMenu, idCmdFirst,
+    debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
 
     mii.cbSize = sizeof(mii);
@@ -574,7 +578,7 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
     mii.wID = cmd;
     mii.dwTypeData = L"&Open"; // FIXME - get from resource file
 
-    // FIXME - others: Extract, Cut, Copy, Paste, Properties
+    // FIXME - others: Extract, Cut, Copy, Paste, Properties (if CMF_DEFAULTONLY not set)
 
     InsertMenuItemW(hmenu, indexMenu, true, &mii);
 
@@ -584,12 +588,43 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
 }
 
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
-    UNIMPLEMENTED; // FIXME
+    if (!pici)
+        return E_INVALIDARG;
+
+    debug("shell_context_menu::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
+          pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((int)pici->lpVerb) : pici->lpVerb,
+          pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
+          (void*)pici->hIcon);
+
+    if ((IS_INTRESOURCE(pici->lpVerb) && pici->lpVerb == 0) || (!IS_INTRESOURCE(pici->lpVerb) && !strcmp(pici->lpVerb, OPEN_VERBA))) {
+        MessageBoxW(pici->hwnd, L"FIXME - open file", L"Error", MB_ICONERROR); // FIXME
+        return S_OK;
+    }
+
+    return E_INVALIDARG;
 }
 
 HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
                                              CHAR* pszName, UINT cchMax) {
-    UNIMPLEMENTED; // FIXME
+    debug("shell_context_menu::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
+          (void*)pReserved, (void*)pszName, cchMax);
+
+    if (idCmd != 0)
+        return E_INVALIDARG;
+
+    switch (uType) {
+        case GCS_VALIDATEA:
+        case GCS_VALIDATEW:
+            return S_OK;
+
+        case GCS_VERBA:
+            return StringCchCopyA(pszName, cchMax, OPEN_VERBA);
+
+        case GCS_VERBW:
+            return StringCchCopyW((STRSAFE_LPWSTR)pszName, cchMax, (WCHAR*)OPEN_VERBW);
+    }
+
+    return E_INVALIDARG;
 }
 
 class factory : public IClassFactory {
