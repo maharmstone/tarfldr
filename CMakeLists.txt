@@ -9,6 +9,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(SRC_FILES tarfldr.cpp
 	folder.cpp
 	enum.cpp
+	menu.cpp
 	tarfldr.def)
 
 add_library(tarfldr SHARED ${SRC_FILES})
