@@ -158,7 +158,7 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
 
     // create PIDL
 
-    size_t pidl_length = 0;
+    size_t pidl_length = offsetof(ITEMIDLIST, mkid.abID);
 
     for (auto fl : found_list) {
         pidl_length += offsetof(ITEMIDLIST, mkid.abID) + fl->name.length();
@@ -176,6 +176,8 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
         memcpy(pidl->mkid.abID, fl->name.data(), fl->name.length());
         pidl = (ITEMIDLIST*)((uint8_t*)pidl + pidl->mkid.cb);
     }
+
+    pidl->mkid.cb = 0;
 
     if (pdwAttributes && found_list.size() == parts.size())
         *pdwAttributes &= found_list.back()->get_atts();
