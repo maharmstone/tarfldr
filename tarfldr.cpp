@@ -24,6 +24,18 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
+extern "C" HRESULT DllRegisterServer() {
+    // FIXME
+
+    return E_NOTIMPL;
+}
+
+extern "C" HRESULT DllUnregisterServer() {
+    // FIXME
+
+    return E_NOTIMPL;
+}
+
 ITEMID_CHILD* tar_item::make_pidl_child() const {
     auto item = (ITEMIDLIST*)CoTaskMemAlloc(offsetof(ITEMIDLIST, mkid.abID) + name.length() + offsetof(ITEMIDLIST, mkid.abID));
 
