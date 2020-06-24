@@ -591,6 +591,7 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
         while (celt > 0 && index < root->children.size()) {
             *rgelt = root->children[index].make_pidl_child();
 
+            rgelt++;
             celt--;
             index++;
 
