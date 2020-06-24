@@ -125,6 +125,12 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
         } while (true);
     }
 
+    // remove trailing backslashes
+
+    while (!parts.empty() && parts.back().empty()) {
+        parts.pop_back();
+    }
+
     // loop and compare case-insensitively
 
     tar_item* r = root;
