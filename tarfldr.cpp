@@ -596,7 +596,7 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
             index++;
 
             if (pceltFetched)
-                *pceltFetched++;
+                (*pceltFetched)++;
         }
 
         return celt == 0 ? S_OK : S_FALSE;
