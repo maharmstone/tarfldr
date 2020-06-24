@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 set(SRC_FILES tarfldr.cpp
+	folder.cpp
 	tarfldr.def)
 
 add_library(tarfldr SHARED ${SRC_FILES})

@@ -10,6 +10,17 @@
 #include <shlguid.h>
 #include <fmt/format.h>
 
+extern const GUID CLSID_TarFolder;
+
+#define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + " stub"s).c_str()); return E_NOTIMPL;
+
+template<typename... Args>
+static void debug(const std::string_view& s, Args&&... args) { // FIXME - only if compiled in Debug mode
+    std::string msg = fmt::format(s, std::forward<Args>(args)...);
+
+    OutputDebugStringA(msg.c_str());
+}
+
 template<typename T>
 class com_object_closer {
 public:
