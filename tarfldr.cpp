@@ -186,6 +186,8 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
 }
 
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
+    debug("shell_folder::EnumObjects({}, {}, {})", (void*)hwnd, grfFlags, (void*)ppenumIDList);
+
     shell_enum* se = new shell_enum(tar, root, grfFlags);
 
     return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
@@ -251,6 +253,8 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
 }
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
+    debug("shell_folder::CreateViewObject({}, {}, {})", (void*)hwndOwner, riid, (void*)ppv);
+
     if (riid == IID_IShellView) {
         SFV_CREATE sfvc;
 
@@ -281,6 +285,8 @@ tar_item& shell_folder::get_item_from_pidl_child(const ITEMID_CHILD* pidl) {
 }
 
 HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut) {
+    debug("shell_folder::GetAttributesOf({}, {}, {})", cidl, (void*)apidl, (void*)rgfInOut);
+
     try {
         SFGAOF common_atts = *rgfInOut;
 
@@ -307,6 +313,9 @@ HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SF
 
 HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl, REFIID riid,
                                     UINT* rgfReserved, void** ppv) {
+    debug("shell_folder::GetUIObjectOf({}, {}, {}, {}, {}, {})", (void*)hwndOwner, cidl, (void*)apidl, riid,
+          (void*)rgfReserved, (void*)ppv);
+
     if (riid == IID_IExtractIconW || riid == IID_IExtractIconA) {
         try {
             if (cidl != 1)
@@ -346,6 +355,8 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
 }
 
 HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName) {
+    debug("shell_folder::GetDisplayNameOf({}, {}, {})", (void*)pidl, uFlags, (void*)pName);
+
     try {
         const auto& item = get_item_from_pidl_child(pidl);
 
@@ -387,6 +398,8 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID *pscid
 }
 
 HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd) {
+    debug("shell_folder::GetDetailsOf({}, {}, {})", (void*)pidl, iColumn, (void*)psd);
+
     if (!pidl) {
         span sp = headers;
 
@@ -406,6 +419,8 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
 }
 
 HRESULT shell_folder::MapColumnToSCID(UINT iColumn, SHCOLUMNID* pscid) {
+    debug("shell_folder::MapColumnToSCID({}, {})", iColumn, (void*)pscid);
+
     span sp = headers;
 
     if (iColumn >= sp.size())
@@ -418,6 +433,8 @@ HRESULT shell_folder::MapColumnToSCID(UINT iColumn, SHCOLUMNID* pscid) {
 }
 
 HRESULT shell_folder::GetClassID(CLSID* pClassID) {
+    debug("shell_folder::GetClassID({})", (void*)pClassID);
+
     if (!pClassID)
         return E_POINTER;
 
@@ -431,6 +448,8 @@ HRESULT shell_folder::Initialize(PCIDLIST_ABSOLUTE pidl) {
 }
 
 HRESULT shell_folder::GetCurFolder(PIDLIST_ABSOLUTE* ppidl) {
+    debug("shell_folder::GetCurFolder({})", (void*)ppidl);
+
     *ppidl = ILCloneFull(root_pidl);
 
     return S_OK;
@@ -472,12 +491,16 @@ HRESULT shell_folder::GetFolderTargetInfo(PERSIST_FOLDER_TARGET_INFO* ppfti) {
 }
 
 HRESULT shell_folder::SetMode(FOLDER_ENUM_MODE feMode) {
+    debug("shell_folder::SetMode({})", feMode);
+
     folder_enum_mode = feMode;
 
     return S_OK;
 }
 
 HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE* pfeMode) {
+    debug("shell_folder::GetMode({})", (void*)pfeMode);
+
     if (!pfeMode)
         return E_POINTER;
 
