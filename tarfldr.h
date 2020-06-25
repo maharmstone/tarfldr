@@ -265,8 +265,23 @@ struct fmt::formatter<GUID> {
 
     template<typename format_context>
     auto format(const GUID& g, format_context& ctx) {
-            return format_to(ctx.out(), "{{{:08x}-{:04x}-{:04x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}",
+            return format_to(ctx.out(), "{{{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}",
                              g.Data1, g.Data2, g.Data3, g.Data4[0], g.Data4[1], g.Data4[2], g.Data4[3], g.Data4[4],
                              g.Data4[5], g.Data4[6], g.Data4[7]);
     }
+};
+
+class formatted_error : public std::exception {
+public:
+    template<typename... Args>
+    formatted_error(const std::string_view& s, Args&&... args) {
+        msg = fmt::format(s, std::forward<Args>(args)...);
+    }
+
+    const char* what() const noexcept {
+        return msg.c_str();
+    }
+
+private:
+    std::string msg;
 };

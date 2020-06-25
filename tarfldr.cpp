@@ -4,6 +4,10 @@ using namespace std;
 
 const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
 
+static const array file_extensions = { u".tar" };
+
+#define PROGID u"TarFolder"
+
 LONG objs_loaded = 0;
 HINSTANCE instance = nullptr;
 
@@ -24,16 +28,140 @@ extern "C" STDAPI DllCanUnloadNow(void) {
     return objs_loaded == 0 ? S_OK : S_FALSE;
 }
 
-extern "C" HRESULT DllRegisterServer() {
-    // FIXME
+static void create_reg_key(HKEY hkey, const u16string& subkey, const u16string& value = u"", bool expand_sz = false) {
+    LSTATUS ret;
+    HKEY hk;
+    DWORD dispos;
 
-    return E_NOTIMPL;
+    ret = RegCreateKeyExW(hkey, (WCHAR*)subkey.c_str(), 0, nullptr, 0, KEY_ALL_ACCESS, nullptr, &hk, &dispos);
+    if (ret != ERROR_SUCCESS)
+        throw formatted_error("RegCreateKeyEx failed for {} (error {}).", utf16_to_utf8(subkey), ret);
+
+    if (!value.empty()) {
+        ret = RegSetValueExW(hk, nullptr, 0, expand_sz ? REG_EXPAND_SZ : REG_SZ, (BYTE*)value.c_str(), (value.length() + 1) * sizeof(char16_t));
+        if (ret != ERROR_SUCCESS) {
+            RegCloseKey(hk);
+            throw formatted_error("RegCreateKeyEx failed for root of {} (error {}).", utf16_to_utf8(subkey), ret);
+        }
+    }
+
+    RegCloseKey(hk);
+}
+
+static void set_reg_value(HKEY hkey, const u16string& path, const u16string& name, const u16string& value) {
+    LSTATUS ret;
+    HKEY key;
+
+    ret = RegOpenKeyW(hkey, (WCHAR*)path.c_str(), &key);
+    if (ret != ERROR_SUCCESS)
+        throw formatted_error("RegOpenKey failed for {} (error {}).", utf16_to_utf8(path), ret);
+
+    ret = RegSetValueExW(key, (WCHAR*)name.c_str(), 0, REG_SZ, (BYTE*)value.c_str(), (value.length() + 1) * sizeof(char16_t));
+    if (ret != ERROR_SUCCESS) {
+        RegCloseKey(key);
+        throw formatted_error("RegCreateKeyEx failed for {}\\{} (error {}).", utf16_to_utf8(path), utf16_to_utf8(name), ret);
+    }
+
+    RegCloseKey(key);
+}
+
+static void set_reg_value(HKEY hkey, const u16string& path, const u16string& name, uint32_t value) {
+    LSTATUS ret;
+    HKEY key;
+
+    ret = RegOpenKeyW(hkey, (WCHAR*)path.c_str(), &key);
+    if (ret != ERROR_SUCCESS)
+        throw formatted_error("RegOpenKey failed for {} (error {}).", utf16_to_utf8(path), ret);
+
+    ret = RegSetValueExW(key, (WCHAR*)name.c_str(), 0, REG_DWORD, (BYTE*)&value, sizeof(value));
+    if (ret != ERROR_SUCCESS) {
+        RegCloseKey(key);
+        throw formatted_error("RegCreateKeyEx failed for {}\\{} (error {}).", utf16_to_utf8(path), utf16_to_utf8(name), ret);
+    }
+
+    RegCloseKey(key);
+}
+
+extern "C" HRESULT DllRegisterServer() {
+    try {
+        auto clsid = utf8_to_utf16(fmt::format("{}", CLSID_TarFolder));
+        char16_t file[MAX_PATH]; // FIXME - size dynamically?
+        DWORD ret;
+
+        ret = GetModuleFileNameW(instance, (WCHAR*)file, sizeof(file) / sizeof(char16_t));
+        if (ret == 0)
+            throw last_error("GetModuleFileName", ret);
+
+        auto browsable_shellext = utf8_to_utf16(fmt::format("{}", CATID_BrowsableShellExt));
+        auto exec_folder = utf8_to_utf16(fmt::format("{}", CLSID_ExecuteFolder));
+
+        for (const auto& ext : file_extensions) {
+            create_reg_key(HKEY_CLASSES_ROOT, ext, PROGID);
+            create_reg_key(HKEY_CLASSES_ROOT, ext + u"\\"s + PROGID);
+
+            set_reg_value(HKEY_CLASSES_ROOT, ext, u"PerceivedType", u"compressed");
+
+            create_reg_key(HKEY_CLASSES_ROOT, ext + u"\\OpenWithProgids"s);
+            set_reg_value(HKEY_CLASSES_ROOT, ext + u"\\OpenWithProgids"s, u"TarFolder", u"");
+        }
+
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID);
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\CLSID", clsid);
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\DefaultIcon", file);
+
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell");
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open");
+        set_reg_value(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open", u"MultiSelectModel", u"Document");
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open\\Command", u"%SystemRoot%\\Explorer.exe /idlist,%I,%L", true);
+        set_reg_value(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open\\Command", u"DelegateExecute", exec_folder);
+
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx");
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\StorageHandler", clsid);
+
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid, PROGID);
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\DefaultIcon", file);
+
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\Implemented Categories");
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\Implemented Categories\\" + browsable_shellext);
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\InProcServer32", file);
+        set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\InProcServer32", u"ThreadingModel", u"Apartment");
+
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ProgID", PROGID);
+
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ShellFolder");
+        set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ShellFolder", u"Attributes", SFGAO_FOLDER);
+
+        return S_OK;
+    } catch (const exception& e) {
+        MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+        return E_FAIL;
+    }
+}
+
+static void delete_reg_tree(HKEY hkey, const u16string& subkey) {
+    LSTATUS ret;
+
+    ret = RegDeleteTreeW(hkey, (WCHAR*)subkey.c_str());
+    if (ret != ERROR_SUCCESS)
+        throw formatted_error("RegDeleteTree failed for {} (error {}).", utf16_to_utf8(subkey), ret);
 }
 
 extern "C" HRESULT DllUnregisterServer() {
-    // FIXME
+    try {
+        auto clsid = utf8_to_utf16(fmt::format("{}", CLSID_TarFolder));
 
-    return E_NOTIMPL;
+        for (const auto& ext : file_extensions) {
+            delete_reg_tree(HKEY_CLASSES_ROOT, ext);
+        }
+
+        delete_reg_tree(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid);
+        delete_reg_tree(HKEY_CLASSES_ROOT, PROGID);
+
+        return S_OK;
+    } catch (const exception& e) {
+        MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+        return E_FAIL;
+    }
 }
 
 ITEMID_CHILD* tar_item::make_pidl_child() const {
