@@ -109,7 +109,13 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
 
                 filesystem::path fn = get_temp_file_name(temp_path, u"tar", 0);
 
-                // FIXME - replace extension with original one?
+                // replace extension with original one
+
+                auto st = full_path.rfind(".");
+                if (st != string::npos) {
+                    string_view ext = string_view(full_path).substr(st + 1);
+                    fn.replace_extension(ext);
+                }
 
                 tar->extract_file(full_path, fn);
 
