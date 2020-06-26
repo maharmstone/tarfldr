@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <shlguid.h>
 #include <fmt/format.h>
+#include <archive.h>
+#include <archive_entry.h>
 
 extern const GUID CLSID_TarFolder;
 
@@ -59,8 +61,12 @@ public:
 class tar_info {
 public:
     tar_info(const std::filesystem::path& fn);
+    ~tar_info();
 
     tar_item root;
+
+private:
+    struct archive* a = nullptr;
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {

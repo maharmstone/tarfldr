@@ -14,7 +14,15 @@ HINSTANCE instance = nullptr;
 // FIXME - installer
 
 tar_info::tar_info(const std::filesystem::path& fn) : root("", true) {
-    // FIXME
+    a = archive_read_new();
+
+    archive_read_support_filter_all(a);
+    archive_read_support_format_all(a);
+
+    auto r = archive_read_open_filename(a, (char*)fn.u8string().c_str(), 20480);
+
+    if (r != ARCHIVE_OK)
+        throw runtime_error(archive_error_string(a));
 
     root.children.emplace_back("hello.txt", false);
     root.children.emplace_back("world.png", false);
@@ -22,6 +30,11 @@ tar_info::tar_info(const std::filesystem::path& fn) : root("", true) {
     root.children.back().children.emplace_back("a.txt", false);
     root.children.back().children.emplace_back("subdir", true);
     root.children.back().children.back().children.emplace_back("b.txt", false);
+}
+
+tar_info::~tar_info() {
+    if (a)
+        archive_read_free(a);
 }
 
 extern "C" STDAPI DllCanUnloadNow(void) {
