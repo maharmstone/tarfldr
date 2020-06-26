@@ -66,6 +66,8 @@ public:
     tar_item root;
 
 private:
+    void add_entry(const std::string_view& fn);
+
     struct archive* a = nullptr;
 };
 

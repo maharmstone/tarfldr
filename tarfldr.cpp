@@ -11,9 +11,70 @@ static const array file_extensions = { u".tar" };
 LONG objs_loaded = 0;
 HINSTANCE instance = nullptr;
 
-// FIXME - installer
+void tar_info::add_entry(const string_view& fn) {
+    vector<string_view> parts;
+    string_view file_part;
+    tar_item* r;
+
+    // split by slashes
+
+    {
+        string_view left = fn;
+
+        do {
+            bool found = false;
+
+            for (unsigned int i = 0; i < left.size(); i++) {
+                if (left[i] == '/') {
+                    if (i != 0 && (i != 1 || left[0] != '.'))
+                        parts.emplace_back(left.data(), i);
+
+                    left = left.substr(i + 1);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                parts.emplace_back(left);
+                break;
+            }
+        } while (true);
+    }
+
+    file_part = parts.back();
+    parts.pop_back();
+
+    r = &root;
+
+    // add dirs
+
+    for (const auto& p : parts) {
+        bool found = false;
+
+        for (auto& c : r->children) {
+            if (c.name == p) {
+                found = true;
+                r = &c;
+                break;
+            }
+        }
+
+        if (!found) {
+            r->children.emplace_back(p, true);
+            r = &r->children.back();
+        }
+    }
+
+    // add child
+
+    if (!file_part.empty())
+        r->children.emplace_back(file_part, false);
+}
 
 tar_info::tar_info(const std::filesystem::path& fn) : root("", true) {
+    struct archive_entry* entry;
+
     a = archive_read_new();
 
     archive_read_support_filter_all(a);
@@ -24,12 +85,9 @@ tar_info::tar_info(const std::filesystem::path& fn) : root("", true) {
     if (r != ARCHIVE_OK)
         throw runtime_error(archive_error_string(a));
 
-    root.children.emplace_back("hello.txt", false);
-    root.children.emplace_back("world.png", false);
-    root.children.emplace_back("dir", true);
-    root.children.back().children.emplace_back("a.txt", false);
-    root.children.back().children.emplace_back("subdir", true);
-    root.children.back().children.back().children.emplace_back("b.txt", false);
+    while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        add_entry(archive_entry_pathname_utf8(entry));
+    }
 }
 
 tar_info::~tar_info() {
