@@ -83,7 +83,7 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
         return E_INVALIDARG;
 
     debug("shell_context_menu::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
-          pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((int)pici->lpVerb) : pici->lpVerb,
+          pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((uintptr_t)pici->lpVerb) : pici->lpVerb,
           pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
           (void*)pici->hIcon);
 
@@ -121,8 +121,8 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
 
                 // open using normal handler
 
-                auto ret = (int)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
-                                             nullptr, SW_SHOW);
+                auto ret = (intptr_t)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
+                                                   nullptr, SW_SHOW);
                 if (ret <= 32)
                     throw formatted_error("ShellExecute returned {}.", ret);
             } catch (const exception& e) {
