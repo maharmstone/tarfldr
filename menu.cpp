@@ -119,9 +119,12 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
 
                 tar->extract_file(full_path, fn);
 
-                // FIXME - open using normal handler
+                // open using normal handler
 
-                MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(full_path).c_str(), (WCHAR*)fn.u16string().c_str(), MB_ICONERROR); // FIXME
+                auto ret = (int)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
+                                             nullptr, SW_SHOW);
+                if (ret <= 32)
+                    throw formatted_error("ShellExecute returned {}.", ret);
             } catch (const exception& e) {
                 MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
                 return E_FAIL;
