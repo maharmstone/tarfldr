@@ -61,7 +61,7 @@ void tar_info::add_entry(const string_view& fn) {
         }
 
         if (!found) {
-            r->children.emplace_back(p, true);
+            r->children.emplace_back(p, true, "");
             r = &r->children.back();
         }
     }
@@ -69,30 +69,96 @@ void tar_info::add_entry(const string_view& fn) {
     // add child
 
     if (!file_part.empty())
-        r->children.emplace_back(file_part, false);
+        r->children.emplace_back(file_part, false, fn);
 }
 
-tar_info::tar_info(const std::filesystem::path& fn) : root("", true) {
+tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", true, "") {
+    struct archive_entry* entry;
+    struct archive* a = archive_read_new();
+
+    try {
+        archive_read_support_filter_all(a);
+        archive_read_support_format_all(a);
+
+        auto r = archive_read_open_filename(a, (char*)fn.u8string().c_str(), 20480);
+
+        if (r != ARCHIVE_OK)
+            throw runtime_error(archive_error_string(a));
+
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            add_entry(archive_entry_pathname_utf8(entry));
+        }
+    } catch (...) {
+        archive_read_free(a);
+        throw;
+    }
+
+    archive_read_free(a);
+}
+
+void tar_info::extract_file(const std::string& path, const std::filesystem::path& dest) {
     struct archive_entry* entry;
 
-    a = archive_read_new();
+    unique_handle h{CreateFileW((LPCWSTR)dest.u16string().c_str(), GENERIC_WRITE, 0, nullptr,
+                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
 
-    archive_read_support_filter_all(a);
-    archive_read_support_format_all(a);
+    if (h.get() == INVALID_HANDLE_VALUE)
+        throw last_error("CreateFile", GetLastError());
 
-    auto r = archive_read_open_filename(a, (char*)fn.u8string().c_str(), 20480);
+    struct archive* a = archive_read_new();
 
-    if (r != ARCHIVE_OK)
-        throw runtime_error(archive_error_string(a));
+    try {
+        int r;
+        bool found = false;
 
-    while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-        add_entry(archive_entry_pathname_utf8(entry));
-    }
-}
+        archive_read_support_filter_all(a);
+        archive_read_support_format_all(a);
 
-tar_info::~tar_info() {
-    if (a)
+        r = archive_read_open_filename(a, (char*)archive_fn.u8string().c_str(), 20480);
+
+        if (r != ARCHIVE_OK)
+            throw runtime_error(archive_error_string(a));
+
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            string_view name = archive_entry_pathname(entry);
+
+            if (name == path) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            throw formatted_error("Could not find {} in archive.", path);
+
+        SetEndOfFile(h.get());
+
+        while (true) {
+            const void* buf;
+            DWORD written;
+            LARGE_INTEGER li;
+            size_t size;
+            int64_t offset;
+
+            r = archive_read_data_block(a, &buf, &size, &offset);
+
+            if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
+                throw runtime_error(archive_error_string(a));
+
+            if (size == 0)
+                break;
+
+            li.QuadPart = offset;
+
+            SetFilePointerEx(h.get(), li, nullptr, FILE_BEGIN);
+            WriteFile(h.get(), buf, (DWORD)size, &written, nullptr);
+        }
+    } catch (...) {
         archive_read_free(a);
+        throw;
+    }
+
+    archive_read_free(a);
 }
 
 extern "C" STDAPI DllCanUnloadNow(void) {

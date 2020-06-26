@@ -304,7 +304,7 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
 
             const auto& item = get_item_from_pidl_child(apidl[0]);
 
-            auto scm = new shell_context_menu(pidl, item.dir);
+            auto scm = new shell_context_menu(pidl, item.dir, item.full_path, tar);
 
             ILFree(pidl);
 

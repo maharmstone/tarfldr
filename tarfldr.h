@@ -37,6 +37,20 @@ public:
 template<typename T>
 using com_object = std::unique_ptr<T*, com_object_closer<T>>;
 
+class handle_closer {
+public:
+    typedef HANDLE pointer;
+
+    void operator()(HANDLE h) {
+        if (h == INVALID_HANDLE_VALUE)
+            return;
+
+        CloseHandle(h);
+    }
+};
+
+typedef std::unique_ptr<HANDLE, handle_closer> unique_handle;
+
 typedef struct {
     std::u16string name;
     int fmt;
@@ -47,13 +61,13 @@ typedef struct {
 
 class tar_item {
 public:
-    tar_item(const std::string_view& name, bool dir) : name(name), dir(dir) { }
+    tar_item(const std::string_view& name, bool dir, const std::string_view& full_path) : name(name), dir(dir), full_path(full_path) { }
 
     ITEMID_CHILD* make_pidl_child() const;
     void find_child(const std::u16string_view& name, tar_item** ret);
     SFGAOF get_atts() const;
 
-    std::string name;
+    std::string name, full_path;
     bool dir;
     std::vector<tar_item> children;
 };
@@ -61,14 +75,15 @@ public:
 class tar_info {
 public:
     tar_info(const std::filesystem::path& fn);
-    ~tar_info();
+
+    void extract_file(const std::string& path, const std::filesystem::path& dest);
 
     tar_item root;
 
 private:
     void add_entry(const std::string_view& fn);
 
-    struct archive* a = nullptr;
+    const std::filesystem::path archive_fn;
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
@@ -156,7 +171,8 @@ private:
 
 class shell_context_menu : public IContextMenu {
 public:
-    shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir);
+    shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir, const std::string_view& full_path,
+                       const std::shared_ptr<tar_info>& tar);
     virtual ~shell_context_menu();
 
     // IUnknown
@@ -177,6 +193,8 @@ private:
     LONG refcount = 0;
     PIDLIST_ABSOLUTE pidl;
     bool is_dir;
+    std::string full_path;
+    std::shared_ptr<tar_info> tar;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {

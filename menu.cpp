@@ -7,7 +7,8 @@
 
 using namespace std;
 
-shell_context_menu::shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir) : is_dir(is_dir) {
+shell_context_menu::shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir, const string_view& full_path,
+                                       const std::shared_ptr<tar_info>& tar) : is_dir(is_dir), full_path(full_path), tar(tar) {
     this->pidl = ILCloneFull(pidl);
 }
 
@@ -68,6 +69,15 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
     return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, cmd - idCmdFirst);
 }
 
+static filesystem::path get_temp_file_name(const filesystem::path& dir, const u16string& prefix, unsigned int unique) {
+    WCHAR tmpfn[MAX_PATH];
+
+    if (GetTempFileNameW((WCHAR*)dir.u16string().c_str(), (WCHAR*)prefix.c_str(), unique, tmpfn) == 0)
+        throw runtime_error("GetTempFileName failed.");
+
+    return tmpfn;
+}
+
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
@@ -91,8 +101,25 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
             sei.lpVerb = L"open";
             ShellExecuteExW(&sei);
         } else {
-            // FIXME - extract and open using normal handler
-            MessageBoxW(pici->hwnd, L"FIXME - open file", L"Error", MB_ICONERROR); // FIXME
+            try {
+                WCHAR temp_path[MAX_PATH];
+
+                if (GetTempPathW(sizeof(temp_path) / sizeof(WCHAR), temp_path) == 0)
+                    throw last_error("GetTempPath", GetLastError());
+
+                filesystem::path fn = get_temp_file_name(temp_path, u"tar", 0);
+
+                // FIXME - replace extension with original one?
+
+                tar->extract_file(full_path, fn);
+
+                // FIXME - open using normal handler
+
+                MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(full_path).c_str(), (WCHAR*)fn.u16string().c_str(), MB_ICONERROR); // FIXME
+            } catch (const exception& e) {
+                MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+                return E_FAIL;
+            }
         }
 
         return S_OK;
