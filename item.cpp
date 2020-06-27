@@ -7,14 +7,14 @@
 
 using namespace std;
 
-shell_item::shell_item(PIDLIST_ABSOLUTE pidl, bool is_dir, const string_view& full_path,
-                       const std::shared_ptr<tar_info>& tar) : is_dir(is_dir), full_path(full_path), tar(tar) {
-    this->pidl = ILCloneFull(pidl);
+shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
+                       const vector<tar_item*>& itemlist) : tar(tar), itemlist(itemlist) {
+    this->root_pidl = ILCloneFull(root_pidl);
 }
 
 shell_item::~shell_item() {
-    if (pidl)
-        ILFree(pidl);
+    if (root_pidl)
+        ILFree(root_pidl);
 }
 
 HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
@@ -90,46 +90,55 @@ HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
           (void*)pici->hIcon);
 
     if ((IS_INTRESOURCE(pici->lpVerb) && pici->lpVerb == 0) || (!IS_INTRESOURCE(pici->lpVerb) && !strcmp(pici->lpVerb, OPEN_VERBA))) {
-        if (is_dir) {
-            SHELLEXECUTEINFOW sei;
+        for (auto item : itemlist) {
+            if (item->dir) {
+                SHELLEXECUTEINFOW sei;
 
-            memset(&sei, 0, sizeof(sei));
-            sei.cbSize = sizeof(sei);
-            sei.fMask = SEE_MASK_IDLIST | SEE_MASK_CLASSNAME;
-            sei.lpIDList = pidl;
-            sei.lpClass = L"Folder";
-            sei.hwnd = pici->hwnd;
-            sei.nShow = SW_SHOWNORMAL;
-            sei.lpVerb = L"open";
-            ShellExecuteExW(&sei);
-        } else {
-            try {
-                WCHAR temp_path[MAX_PATH];
+                auto child_pidl = item->make_pidl_child();
+                auto pidl = ILCombine(root_pidl, child_pidl);
 
-                if (GetTempPathW(sizeof(temp_path) / sizeof(WCHAR), temp_path) == 0)
-                    throw last_error("GetTempPath", GetLastError());
+                ILFree(child_pidl);
 
-                filesystem::path fn = get_temp_file_name(temp_path, u"tar", 0);
+                memset(&sei, 0, sizeof(sei));
+                sei.cbSize = sizeof(sei);
+                sei.fMask = SEE_MASK_IDLIST | SEE_MASK_CLASSNAME;
+                sei.lpIDList = pidl;
+                sei.lpClass = L"Folder";
+                sei.hwnd = pici->hwnd;
+                sei.nShow = SW_SHOWNORMAL;
+                sei.lpVerb = L"open";
+                ShellExecuteExW(&sei);
 
-                // replace extension with original one
+                ILFree(pidl);
+            } else {
+                try {
+                    WCHAR temp_path[MAX_PATH];
 
-                auto st = full_path.rfind(".");
-                if (st != string::npos) {
-                    string_view ext = string_view(full_path).substr(st + 1);
-                    fn.replace_extension(ext);
+                    if (GetTempPathW(sizeof(temp_path) / sizeof(WCHAR), temp_path) == 0)
+                        throw last_error("GetTempPath", GetLastError());
+
+                    filesystem::path fn = get_temp_file_name(temp_path, u"tar", 0);
+
+                    // replace extension with original one
+
+                    auto st = item->full_path.rfind(".");
+                    if (st != string::npos) {
+                        string_view ext = string_view(item->full_path).substr(st + 1);
+                        fn.replace_extension(ext);
+                    }
+
+                    tar->extract_file(item->full_path, fn);
+
+                    // open using normal handler
+
+                    auto ret = (intptr_t)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
+                                                    nullptr, SW_SHOW);
+                    if (ret <= 32)
+                        throw formatted_error("ShellExecute returned {}.", ret);
+                } catch (const exception& e) {
+                    MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+                    return E_FAIL;
                 }
-
-                tar->extract_file(full_path, fn);
-
-                // open using normal handler
-
-                auto ret = (intptr_t)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
-                                                   nullptr, SW_SHOW);
-                if (ret <= 32)
-                    throw formatted_error("ShellExecute returned {}.", ret);
-            } catch (const exception& e) {
-                MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
-                return E_FAIL;
             }
         }
 

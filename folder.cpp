@@ -300,16 +300,18 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
         }
     } else if (riid == IID_IContextMenu || riid == IID_IDataObject) {
         try {
-            if (cidl != 1)
+            if (cidl == 0)
                 return E_INVALIDARG;
 
-            auto pidl = ILCombine(root_pidl, apidl[0]);
+            vector<tar_item*> itemlist;
 
-            const auto& item = get_item_from_pidl_child(apidl[0]);
+            itemlist.reserve(cidl);
 
-            auto scm = new shell_item(pidl, item.dir, item.full_path, tar);
+            for (unsigned int i = 0; i < cidl; i++) {
+                itemlist.emplace_back(&get_item_from_pidl_child(apidl[i]));
+            }
 
-            ILFree(pidl);
+            auto scm = new shell_item(root_pidl, tar, itemlist);
 
             return scm->QueryInterface(riid, ppv);
         } catch (const invalid_argument&) {

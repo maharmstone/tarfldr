@@ -176,8 +176,8 @@ private:
 
 class shell_item : public IContextMenu, public IDataObject {
 public:
-    shell_item(PIDLIST_ABSOLUTE pidl, bool is_dir, const std::string_view& full_path,
-               const std::shared_ptr<tar_info>& tar);
+    shell_item(PIDLIST_ABSOLUTE root_pidl, const std::shared_ptr<tar_info>& tar,
+               const std::vector<tar_item*>& itemlist);
     virtual ~shell_item();
 
     // IUnknown
@@ -210,10 +210,9 @@ public:
 
 private:
     LONG refcount = 0;
-    PIDLIST_ABSOLUTE pidl;
-    bool is_dir;
-    std::string full_path;
+    PIDLIST_ABSOLUTE root_pidl;
     std::shared_ptr<tar_info> tar;
+    std::vector<tar_item*> itemlist;
 };
 
 struct data_format {
