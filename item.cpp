@@ -154,7 +154,18 @@ HRESULT shell_item::open_cmd(CMINVOKECOMMANDINFO* pici) {
 }
 
 HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
-    UNIMPLEMENTED; // FIXME
+    HRESULT hr;
+    IDataObject* dataobj;
+
+    hr = QueryInterface(IID_IDataObject, (void**)&dataobj);
+    if (FAILED(hr))
+        return hr;
+
+    OleSetClipboard(dataobj);
+
+    dataobj->Release();
+
+    return S_OK;
 }
 
 HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
