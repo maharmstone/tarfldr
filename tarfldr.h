@@ -174,7 +174,7 @@ private:
     size_t index = 0;
 };
 
-class shell_item : public IContextMenu {
+class shell_item : public IContextMenu, public IDataObject {
 public:
     shell_item(PIDLIST_ABSOLUTE pidl, bool is_dir, const std::string_view& full_path,
                const std::shared_ptr<tar_info>& tar);
@@ -193,6 +193,20 @@ public:
     HRESULT __stdcall InvokeCommand(CMINVOKECOMMANDINFO* pici);
     HRESULT __stdcall GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
                                        CHAR* pszName, UINT cchMax);
+
+    // IDataObject
+
+    HRESULT __stdcall GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium);
+    HRESULT __stdcall GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium);
+    HRESULT __stdcall QueryGetData(FORMATETC* pformatetc);
+    HRESULT __stdcall GetCanonicalFormatEtc(FORMATETC* pformatectIn,
+                                            FORMATETC* pformatetcOut);
+    HRESULT __stdcall SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL fRelease);
+    HRESULT __stdcall EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC* *ppenumFormatEtc);
+    HRESULT __stdcall DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink,
+                              DWORD* pdwConnection);
+    HRESULT __stdcall DUnadvise(DWORD dwConnection);
+    HRESULT __stdcall EnumDAdvise(IEnumSTATDATA* *ppenumAdvise);
 
 private:
     LONG refcount = 0;

@@ -298,7 +298,7 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
         } catch (const invalid_argument&) {
             return E_INVALIDARG;
         }
-    } else if (riid == IID_IContextMenu) {
+    } else if (riid == IID_IContextMenu || riid == IID_IDataObject) {
         try {
             if (cidl != 1)
                 return E_INVALIDARG;

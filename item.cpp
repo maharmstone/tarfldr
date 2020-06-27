@@ -20,6 +20,8 @@ shell_item::~shell_item() {
 HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IContextMenu)
         *ppv = static_cast<IContextMenu*>(this);
+    else if (iid == IID_IDataObject)
+        *ppv = static_cast<IDataObject*>(this);
     else {
         debug("shell_item::QueryInterface: unsupported interface {}", iid);
 
@@ -158,4 +160,40 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
     }
 
     return E_INVALIDARG;
+}
+
+HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL fRelease) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC* *ppenumFormatEtc) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink, DWORD* pdwConnection) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::DUnadvise(DWORD dwConnection) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
+    UNIMPLEMENTED; // FIXME
 }
