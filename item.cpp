@@ -224,6 +224,10 @@ HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
     UNIMPLEMENTED; // FIXME
 }
 
+shell_item_enum_format::shell_item_enum_format() {
+    formats.emplace_back(CF_HDROP, TYMED_HGLOBAL);
+}
+
 HRESULT shell_item_enum_format::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IEnumFORMATETC)
         *ppv = static_cast<IEnumFORMATETC*>(this);
@@ -253,7 +257,25 @@ ULONG shell_item_enum_format::Release() {
 }
 
 HRESULT shell_item_enum_format::Next(ULONG celt, FORMATETC* rgelt, ULONG* pceltFetched) {
-    UNIMPLEMENTED; // FIXME
+    if (pceltFetched)
+        *pceltFetched = 0;
+
+    while (celt > 0 && index < formats.size()) {
+        rgelt->cfFormat = formats[index].format;
+        rgelt->dwAspect = DVASPECT_CONTENT;
+        rgelt->ptd = nullptr;
+        rgelt->tymed = formats[index].tymed;
+        rgelt->lindex = -1;
+
+        rgelt++;
+        celt--;
+        index++;
+
+        if (pceltFetched)
+            (*pceltFetched)++;
+    }
+
+    return celt == 0 ? S_OK : S_FALSE;
 }
 
 HRESULT shell_item_enum_format::Skip(ULONG celt) {

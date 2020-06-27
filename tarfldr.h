@@ -216,8 +216,17 @@ private:
     std::shared_ptr<tar_info> tar;
 };
 
+struct data_format {
+    data_format(CLIPFORMAT format, DWORD tymed) : format(format), tymed(tymed) { }
+
+    CLIPFORMAT format;
+    DWORD tymed;
+};
+
 class shell_item_enum_format : public IEnumFORMATETC {
 public:
+    shell_item_enum_format();
+
     // IUnknown
 
     HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
@@ -233,6 +242,8 @@ public:
 
 private:
     LONG refcount = 0;
+    std::vector<data_format> formats;
+    unsigned int index = 0;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
