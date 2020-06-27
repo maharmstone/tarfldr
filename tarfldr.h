@@ -208,7 +208,7 @@ public:
     HRESULT __stdcall DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink,
                               DWORD* pdwConnection);
     HRESULT __stdcall DUnadvise(DWORD dwConnection);
-    HRESULT __stdcall EnumDAdvise(IEnumSTATDATA* *ppenumAdvise);
+    HRESULT __stdcall EnumDAdvise(IEnumSTATDATA** ppenumAdvise);
 
     HRESULT open_cmd(CMINVOKECOMMANDINFO* pici);
     HRESULT copy_cmd(CMINVOKECOMMANDINFO* pici);
@@ -253,6 +253,38 @@ private:
     LONG refcount = 0;
     std::vector<data_format> formats;
     unsigned int index = 0;
+};
+
+class tar_item_stream : public IStream {
+public:
+    tar_item_stream(tar_item& item) : item(item) { }
+
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // ISequentialStream
+
+    HRESULT __stdcall Read(void* pv, ULONG cb, ULONG* pcbRead);
+    HRESULT __stdcall Write(const void* pv, ULONG cb, ULONG* pcbWritten);
+
+    // IStream
+
+    HRESULT __stdcall Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition);
+    HRESULT __stdcall SetSize(ULARGE_INTEGER libNewSize);
+    HRESULT __stdcall CopyTo(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten);
+    HRESULT __stdcall Commit(DWORD grfCommitFlags);
+    HRESULT __stdcall Revert();
+    HRESULT __stdcall LockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+    HRESULT __stdcall UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+    HRESULT __stdcall Stat(STATSTG* pstatstg, DWORD grfStatFlag);
+    HRESULT __stdcall Clone(IStream** ppstm);
+
+private:
+    LONG refcount = 0;
+    tar_item& item;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {

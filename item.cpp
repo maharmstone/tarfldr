@@ -247,16 +247,32 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
           pformatetcIn->cfFormat, utf16_to_utf8(format), (void*)pformatetcIn->ptd, pformatetcIn->dwAspect,
           pformatetcIn->lindex, pformatetcIn->tymed, pmedium->tymed, pmedium->hGlobal);
 
-    if (pformatetcIn->cfFormat == cf_shell_id_list && pformatetcIn->tymed == TYMED_HGLOBAL) {
+    if (pformatetcIn->cfFormat == cf_shell_id_list && pformatetcIn->tymed & TYMED_HGLOBAL) {
         pmedium->tymed = TYMED_HGLOBAL;
         pmedium->hGlobal = make_shell_id_list();
         pmedium->pUnkForRelease = nullptr;
 
         return S_OK;
-    } else if (pformatetcIn->cfFormat == cf_file_descriptor && pformatetcIn->tymed == TYMED_HGLOBAL) {
+    } else if (pformatetcIn->cfFormat == cf_file_descriptor && pformatetcIn->tymed & TYMED_HGLOBAL) {
         pmedium->tymed = TYMED_HGLOBAL;
         pmedium->hGlobal = make_file_descriptor();
         pmedium->pUnkForRelease = nullptr;
+
+        return S_OK;
+    } else if (pformatetcIn->cfFormat == cf_file_contents && pformatetcIn->tymed & TYMED_ISTREAM) {
+        if (pformatetcIn->lindex >= itemlist.size())
+            return E_INVALIDARG;
+
+        auto tis = new tar_item_stream(*itemlist[pformatetcIn->lindex]);
+        HRESULT hr;
+
+        pmedium->tymed = TYMED_ISTREAM;
+
+        hr = tis->QueryInterface(IID_IStream, (void**)&pmedium->pstm);
+        if (FAILED(hr))
+            return hr;
+
+        pmedium->pUnkForRelease = static_cast<IUnknown*>(tis);
 
         return S_OK;
     }
@@ -379,11 +395,11 @@ HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
           pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
           pformatetc->lindex, pformatetc->tymed);
 
-    if (pformatetc->cfFormat == cf_shell_id_list && pformatetc->tymed == TYMED_HGLOBAL)
+    if (pformatetc->cfFormat == cf_shell_id_list && pformatetc->tymed & TYMED_HGLOBAL)
         return S_OK;
-    else if (pformatetc->cfFormat == cf_file_contents && pformatetc->tymed == TYMED_ISTREAM)
+    else if (pformatetc->cfFormat == cf_file_contents && pformatetc->tymed & TYMED_ISTREAM)
         return S_OK;
-    else if (pformatetc->cfFormat == cf_file_descriptor && pformatetc->tymed == TYMED_HGLOBAL)
+    else if (pformatetc->cfFormat == cf_file_descriptor && pformatetc->tymed & TYMED_HGLOBAL)
         return S_OK;
 
     return DV_E_TYMED;

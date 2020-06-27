@@ -345,6 +345,78 @@ SFGAOF tar_item::get_atts() const {
     return atts;
 }
 
+HRESULT tar_item_stream::QueryInterface(REFIID iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_ISequentialStream || iid == IID_IStream)
+        *ppv = static_cast<IStream*>(this);
+    else {
+        debug("tar_item_stream::QueryInterface: unsupported interface {}", iid);
+
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    reinterpret_cast<IUnknown*>(*ppv)->AddRef();
+
+    return S_OK;
+}
+
+ULONG tar_item_stream::AddRef() {
+    return InterlockedIncrement(&refcount);
+}
+
+ULONG tar_item_stream::Release() {
+    LONG rc = InterlockedDecrement(&refcount);
+
+    if (rc == 0)
+        delete this;
+
+    return rc;
+}
+
+HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::Write(const void* pv, ULONG cb, ULONG* pcbWritten) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::SetSize(ULARGE_INTEGER libNewSize) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::CopyTo(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::Commit(DWORD grfCommitFlags) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::Revert() {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::LockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::Stat(STATSTG* pstatstg, DWORD grfStatFlag) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT tar_item_stream::Clone(IStream** ppstm) {
+    UNIMPLEMENTED; // FIXME
+}
+
 class factory : public IClassFactory {
 public:
     factory() {
