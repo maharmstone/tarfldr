@@ -23,6 +23,7 @@ shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& t
     this->root_pidl = ILCloneFull(root_pidl);
     cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
     cf_file_contents = RegisterClipboardFormatW(CFSTR_FILECONTENTS);
+    cf_file_descriptor = RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW);
 }
 
 shell_item::~shell_item() {
@@ -330,6 +331,8 @@ HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
         return S_OK;
     else if (pformatetc->cfFormat == cf_file_contents && pformatetc->tymed == TYMED_ISTREAM)
         return S_OK;
+    else if (pformatetc->cfFormat == cf_file_descriptor && pformatetc->tymed == TYMED_HGLOBAL)
+        return S_OK;
 
     return DV_E_TYMED;
 }
@@ -355,7 +358,7 @@ HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL f
 
 HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) {
     if (dwDirection == DATADIR_GET) {
-        auto sief = new shell_item_enum_format(cf_shell_id_list, cf_file_contents);
+        auto sief = new shell_item_enum_format(cf_shell_id_list, cf_file_contents, cf_file_descriptor);
 
         return sief->QueryInterface(IID_IEnumFORMATETC, (void**)ppenumFormatEtc);
     }
@@ -375,9 +378,11 @@ HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
     UNIMPLEMENTED; // FIXME
 }
 
-shell_item_enum_format::shell_item_enum_format(CLIPFORMAT cf_shell_id_list, CLIPFORMAT cf_file_contents) {
+shell_item_enum_format::shell_item_enum_format(CLIPFORMAT cf_shell_id_list, CLIPFORMAT cf_file_contents,
+                                               CLIPFORMAT cf_file_descriptor) {
     formats.emplace_back(cf_shell_id_list, TYMED_HGLOBAL);
     formats.emplace_back(cf_file_contents, TYMED_ISTREAM);
+    formats.emplace_back(cf_file_descriptor, TYMED_HGLOBAL);
 }
 
 HRESULT shell_item_enum_format::QueryInterface(REFIID iid, void** ppv) {
