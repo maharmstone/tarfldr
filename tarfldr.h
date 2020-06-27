@@ -208,6 +208,9 @@ public:
     HRESULT __stdcall DUnadvise(DWORD dwConnection);
     HRESULT __stdcall EnumDAdvise(IEnumSTATDATA* *ppenumAdvise);
 
+    HRESULT open_cmd(CMINVOKECOMMANDINFO* pici);
+    HRESULT copy_cmd(CMINVOKECOMMANDINFO* pici);
+
 private:
     HGLOBAL make_shell_id_list();
 

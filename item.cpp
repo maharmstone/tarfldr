@@ -1,11 +1,22 @@
 #include "tarfldr.h"
 #include <strsafe.h>
 #include <shlobj.h>
-
-#define OPEN_VERBA "Open"
-#define OPEN_VERBW u"Open"
+#include <span>
+#include <functional>
 
 using namespace std;
+
+static const struct {
+    char16_t* name;
+    const char* verba;
+    const char16_t* verbw;
+    function<HRESULT(shell_item*, CMINVOKECOMMANDINFO*)> cmd;
+} menu_items[] = {
+    { u"&Open", "Open", u"Open", &shell_item::open_cmd },
+    { u"&Copy", "Copy", u"Copy", &shell_item::copy_cmd }
+};
+
+// FIXME - others: Extract, Cut, Paste, Properties
 
 shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
                        const vector<tar_item*>& itemlist) : tar(tar), itemlist(itemlist) {
@@ -50,25 +61,29 @@ ULONG shell_item::Release() {
 }
 
 HRESULT shell_item::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
-                                             UINT idCmdLast, UINT uFlags) {
+                                     UINT idCmdLast, UINT uFlags) {
     UINT cmd = idCmdFirst;
     MENUITEMINFOW mii;
 
     debug("shell_item::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
 
-    mii.cbSize = sizeof(mii);
-    mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
-    mii.fType = MFT_STRING;
-    mii.fState = MFS_DEFAULT;
-    mii.wID = cmd;
-    mii.dwTypeData = L"&Open"; // FIXME - get from resource file
+    span mi = menu_items;
 
-    // FIXME - others: Extract, Cut, Copy, Paste, Properties (if CMF_DEFAULTONLY not set)
+    for (unsigned int i = 0; i < mi.size(); i++) {
+        mii.cbSize = sizeof(mii);
+        mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
+        mii.fType = MFT_STRING;
+        mii.fState = i == 0 ? MFS_DEFAULT : 0;
+        mii.wID = cmd;
+        mii.dwTypeData = (WCHAR*)mi[i].name; // FIXME - get from resource file
 
-    InsertMenuItemW(hmenu, indexMenu, true, &mii);
+        InsertMenuItemW(hmenu, indexMenu + i, true, &mii);
+        cmd++;
 
-    cmd++;
+        if (uFlags & CMF_DEFAULTONLY)
+            break;
+    }
 
     return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, cmd - idCmdFirst);
 }
@@ -82,6 +97,66 @@ static filesystem::path get_temp_file_name(const filesystem::path& dir, const u1
     return tmpfn;
 }
 
+HRESULT shell_item::open_cmd(CMINVOKECOMMANDINFO* pici) {
+    for (auto item : itemlist) {
+        if (item->dir) {
+            SHELLEXECUTEINFOW sei;
+
+            auto child_pidl = item->make_pidl_child();
+            auto pidl = ILCombine(root_pidl, child_pidl);
+
+            ILFree(child_pidl);
+
+            memset(&sei, 0, sizeof(sei));
+            sei.cbSize = sizeof(sei);
+            sei.fMask = SEE_MASK_IDLIST | SEE_MASK_CLASSNAME;
+            sei.lpIDList = pidl;
+            sei.lpClass = L"Folder";
+            sei.hwnd = pici->hwnd;
+            sei.nShow = SW_SHOWNORMAL;
+            sei.lpVerb = L"open";
+            ShellExecuteExW(&sei);
+
+            ILFree(pidl);
+        } else {
+            try {
+                WCHAR temp_path[MAX_PATH];
+
+                if (GetTempPathW(sizeof(temp_path) / sizeof(WCHAR), temp_path) == 0)
+                    throw last_error("GetTempPath", GetLastError());
+
+                filesystem::path fn = get_temp_file_name(temp_path, u"tar", 0);
+
+                // replace extension with original one
+
+                auto st = item->full_path.rfind(".");
+                if (st != string::npos) {
+                    string_view ext = string_view(item->full_path).substr(st + 1);
+                    fn.replace_extension(ext);
+                }
+
+                tar->extract_file(item->full_path, fn);
+
+                // open using normal handler
+
+                auto ret = (intptr_t)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
+                                                   nullptr, SW_SHOW);
+                if (ret <= 32)
+                    throw formatted_error("ShellExecute returned {}.", ret);
+            } catch (const exception& e) {
+                MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+                return E_FAIL;
+            }
+        }
+    }
+
+    return S_OK;
+}
+
+HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
+    UNIMPLEMENTED; // FIXME
+}
+
 HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
@@ -91,71 +166,31 @@ HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
           pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
           (void*)pici->hIcon);
 
-    if ((IS_INTRESOURCE(pici->lpVerb) && pici->lpVerb == 0) || (!IS_INTRESOURCE(pici->lpVerb) && !strcmp(pici->lpVerb, OPEN_VERBA))) {
-        for (auto item : itemlist) {
-            if (item->dir) {
-                SHELLEXECUTEINFOW sei;
+    span mi = menu_items;
 
-                auto child_pidl = item->make_pidl_child();
-                auto pidl = ILCombine(root_pidl, child_pidl);
+    if (IS_INTRESOURCE(pici->lpVerb)) {
+        if ((int)pici->lpVerb >= mi.size())
+            return E_INVALIDARG;
 
-                ILFree(child_pidl);
+        return mi[(unsigned int)pici->lpVerb].cmd(this, pici);
+    }
 
-                memset(&sei, 0, sizeof(sei));
-                sei.cbSize = sizeof(sei);
-                sei.fMask = SEE_MASK_IDLIST | SEE_MASK_CLASSNAME;
-                sei.lpIDList = pidl;
-                sei.lpClass = L"Folder";
-                sei.hwnd = pici->hwnd;
-                sei.nShow = SW_SHOWNORMAL;
-                sei.lpVerb = L"open";
-                ShellExecuteExW(&sei);
-
-                ILFree(pidl);
-            } else {
-                try {
-                    WCHAR temp_path[MAX_PATH];
-
-                    if (GetTempPathW(sizeof(temp_path) / sizeof(WCHAR), temp_path) == 0)
-                        throw last_error("GetTempPath", GetLastError());
-
-                    filesystem::path fn = get_temp_file_name(temp_path, u"tar", 0);
-
-                    // replace extension with original one
-
-                    auto st = item->full_path.rfind(".");
-                    if (st != string::npos) {
-                        string_view ext = string_view(item->full_path).substr(st + 1);
-                        fn.replace_extension(ext);
-                    }
-
-                    tar->extract_file(item->full_path, fn);
-
-                    // open using normal handler
-
-                    auto ret = (intptr_t)ShellExecuteW(pici->hwnd, L"open", (WCHAR*)fn.u16string().c_str(), nullptr,
-                                                    nullptr, SW_SHOW);
-                    if (ret <= 32)
-                        throw formatted_error("ShellExecute returned {}.", ret);
-                } catch (const exception& e) {
-                    MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
-                    return E_FAIL;
-                }
-            }
-        }
-
-        return S_OK;
+    for (const auto& mie : mi) {
+        if (!strcmp(pici->lpVerb, mie.verba))
+            return mie.cmd(this, pici);
     }
 
     return E_INVALIDARG;
 }
 
 HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
-                                             CHAR* pszName, UINT cchMax) {
+                                     CHAR* pszName, UINT cchMax) {
     debug("shell_item::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
           (void*)pReserved, (void*)pszName, cchMax);
 
-    if (idCmd != 0)
+    span mi = menu_items;
+
+    if (idCmd >= mi.size())
         return E_INVALIDARG;
 
     switch (uType) {
@@ -164,10 +199,10 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
             return S_OK;
 
         case GCS_VERBA:
-            return StringCchCopyA(pszName, cchMax, OPEN_VERBA);
+            return StringCchCopyA(pszName, cchMax, mi[0].verba);
 
         case GCS_VERBW:
-            return StringCchCopyW((STRSAFE_LPWSTR)pszName, cchMax, (WCHAR*)OPEN_VERBW);
+            return StringCchCopyW((STRSAFE_LPWSTR)pszName, cchMax, (WCHAR*)mi[0].verbw);
     }
 
     return E_INVALIDARG;
