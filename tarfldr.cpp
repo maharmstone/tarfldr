@@ -536,7 +536,9 @@ public:
     // IClassFactory
 
     HRESULT __stdcall CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
-        if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2) {
+        if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2 ||
+            iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3 ||
+            iid == IID_IObjectWithFolderEnumMode || iid == IID_IShellFolderViewCB) {
             shell_folder* sf = new shell_folder;
             if (!sf)
                 return E_OUTOFMEMORY;
@@ -544,7 +546,7 @@ public:
             return sf->QueryInterface(iid, ppv);
         }
 
-        debug("factor::CreateInstance: unsupported interface {}", iid);
+        debug("factory::CreateInstance: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
