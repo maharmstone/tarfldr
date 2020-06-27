@@ -11,6 +11,7 @@ shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& t
                        const vector<tar_item*>& itemlist) : tar(tar), itemlist(itemlist) {
     this->root_pidl = ILCloneFull(root_pidl);
     cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
+    cf_file_contents = RegisterClipboardFormatW(CFSTR_FILECONTENTS);
 }
 
 shell_item::~shell_item() {
@@ -264,10 +265,12 @@ HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
           pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
           pformatetc->lindex, pformatetc->tymed);
 
-    if (pformatetc->cfFormat != cf_shell_id_list || pformatetc->tymed != TYMED_HGLOBAL)
-        return DV_E_TYMED;
+    if (pformatetc->cfFormat == cf_shell_id_list && pformatetc->tymed == TYMED_HGLOBAL)
+        return S_OK;
+    else if (pformatetc->cfFormat == cf_file_contents && pformatetc->tymed == TYMED_ISTREAM)
+        return S_OK;
 
-    return S_OK;
+    return DV_E_TYMED;
 }
 
 HRESULT shell_item::GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) {
@@ -280,7 +283,7 @@ HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL f
 
 HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) {
     if (dwDirection == DATADIR_GET) {
-        auto sief = new shell_item_enum_format(cf_shell_id_list);
+        auto sief = new shell_item_enum_format(cf_shell_id_list, cf_file_contents);
 
         return sief->QueryInterface(IID_IEnumFORMATETC, (void**)ppenumFormatEtc);
     }
@@ -300,8 +303,9 @@ HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
     UNIMPLEMENTED; // FIXME
 }
 
-shell_item_enum_format::shell_item_enum_format(CLIPFORMAT cf_shell_id_list) {
+shell_item_enum_format::shell_item_enum_format(CLIPFORMAT cf_shell_id_list, CLIPFORMAT cf_file_contents) {
     formats.emplace_back(cf_shell_id_list, TYMED_HGLOBAL);
+    formats.emplace_back(cf_file_contents, TYMED_ISTREAM);
 }
 
 HRESULT shell_item_enum_format::QueryInterface(REFIID iid, void** ppv) {

@@ -215,7 +215,7 @@ private:
     PIDLIST_ABSOLUTE root_pidl;
     std::shared_ptr<tar_info> tar;
     std::vector<tar_item*> itemlist;
-    CLIPFORMAT cf_shell_id_list;
+    CLIPFORMAT cf_shell_id_list, cf_file_contents;
 };
 
 struct data_format {
@@ -227,7 +227,7 @@ struct data_format {
 
 class shell_item_enum_format : public IEnumFORMATETC {
 public:
-    shell_item_enum_format(CLIPFORMAT cf_shell_id_list);
+    shell_item_enum_format(CLIPFORMAT cf_shell_id_list, CLIPFORMAT cf_file_contents);
 
     // IUnknown
 
