@@ -359,7 +359,9 @@ HRESULT shell_item_enum_format::Skip(ULONG celt) {
 }
 
 HRESULT shell_item_enum_format::Reset() {
-    UNIMPLEMENTED; // FIXME
+    index = 0;
+
+    return S_OK;
 }
 
 HRESULT shell_item_enum_format::Clone(IEnumFORMATETC** ppenum) {
