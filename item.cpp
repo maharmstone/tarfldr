@@ -339,6 +339,17 @@ HRESULT shell_item::GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pf
 }
 
 HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL fRelease) {
+    char16_t format[256];
+
+    if (!pformatetc || !pmedium)
+        return E_INVALIDARG;
+
+    GetClipboardFormatNameW(pformatetc->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
+
+    debug("shell_item::SetData(pformatetc = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}], fRelease = {})",
+          pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
+          pformatetc->lindex, pformatetc->tymed, pmedium->tymed, pmedium->hGlobal, fRelease);
+
     UNIMPLEMENTED; // FIXME
 }
 
