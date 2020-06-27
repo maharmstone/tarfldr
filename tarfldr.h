@@ -209,10 +209,13 @@ public:
     HRESULT __stdcall EnumDAdvise(IEnumSTATDATA* *ppenumAdvise);
 
 private:
+    HGLOBAL make_shell_id_list();
+
     LONG refcount = 0;
     PIDLIST_ABSOLUTE root_pidl;
     std::shared_ptr<tar_info> tar;
     std::vector<tar_item*> itemlist;
+    CLIPFORMAT cf_shell_id_list;
 };
 
 struct data_format {
@@ -224,7 +227,7 @@ struct data_format {
 
 class shell_item_enum_format : public IEnumFORMATETC {
 public:
-    shell_item_enum_format();
+    shell_item_enum_format(CLIPFORMAT cf_shell_id_list);
 
     // IUnknown
 

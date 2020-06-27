@@ -10,6 +10,7 @@ using namespace std;
 shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
                        const vector<tar_item*>& itemlist) : tar(tar), itemlist(itemlist) {
     this->root_pidl = ILCloneFull(root_pidl);
+    cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
 }
 
 shell_item::~shell_item() {
@@ -172,17 +173,79 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
 }
 
 HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
+    char16_t format[256];
+
     if (!pformatetcIn || !pmedium)
         return E_INVALIDARG;
 
-    if (pformatetcIn->cfFormat != CF_HDROP || pformatetcIn->tymed != TYMED_HGLOBAL)
-        return E_INVALIDARG;
+    GetClipboardFormatNameW(pformatetcIn->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item::GetData(pformatetcIn = [cfFormat = {}, ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])",
-          pformatetcIn->cfFormat, (void*)pformatetcIn->ptd, pformatetcIn->dwAspect,
+    debug("shell_item::GetData(pformatetcIn = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])",
+          pformatetcIn->cfFormat, utf16_to_utf8(format), (void*)pformatetcIn->ptd, pformatetcIn->dwAspect,
           pformatetcIn->lindex, pformatetcIn->tymed, pmedium->tymed, pmedium->hGlobal);
 
-    UNIMPLEMENTED; // FIXME
+    if (pformatetcIn->cfFormat == cf_shell_id_list && pformatetcIn->tymed == TYMED_HGLOBAL) {
+        pmedium->tymed = TYMED_HGLOBAL;
+        pmedium->hGlobal = make_shell_id_list();
+        pmedium->pUnkForRelease = nullptr;
+
+        return S_OK;
+    }
+
+    return E_INVALIDARG;
+}
+
+HGLOBAL shell_item::make_shell_id_list() {
+    HGLOBAL hg;
+    CIDA* cida;
+    size_t size, root_pidl_size;
+    uint8_t* ptr;
+    UINT* off;
+
+    root_pidl_size = ILGetSize(root_pidl);
+
+    size = offsetof(CIDA, aoffset) + (sizeof(UINT) * (itemlist.size() + 1)) + root_pidl_size;
+
+    for (auto item : itemlist) {
+        auto child_pidl = item->make_pidl_child();
+
+        size += ILGetSize(child_pidl);
+
+        ILFree(child_pidl);
+    }
+
+    hg = GlobalAlloc(GHND | GMEM_SHARE, size);
+
+    if (!hg)
+        return nullptr;
+
+    cida = (CIDA*)GlobalLock(hg);
+    cida->cidl = itemlist.size();
+
+    off = &cida->aoffset[0];
+    ptr = (uint8_t*)cida + offsetof(CIDA, aoffset) + ((cida->cidl + 1) * sizeof(UINT));
+
+    *off = ptr - (uint8_t*)cida;
+    memcpy(ptr, &root_pidl, root_pidl_size);
+    ptr += root_pidl_size;
+    off++;
+
+    for (auto item : itemlist) {
+        auto child_pidl = item->make_pidl_child();
+        size_t child_pidl_size = ILGetSize(child_pidl);
+
+        *off = ptr - (uint8_t*)cida;
+        memcpy(ptr, child_pidl, child_pidl_size);
+
+        ILFree(child_pidl);
+
+        ptr += child_pidl_size;
+        off++;
+    }
+
+    GlobalUnlock(hg);
+
+    return hg;
 }
 
 HRESULT shell_item::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) {
@@ -190,14 +253,18 @@ HRESULT shell_item::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) {
 }
 
 HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
+    char16_t format[256];
+
     if (!pformatetc)
         return E_INVALIDARG;
 
-    debug("shell_item::QueryGetData(cfFormat = {}, ptd = {}, dwAspect = {}, lindex = {}, tymed = {})",
-          pformatetc->cfFormat, (void*)pformatetc->ptd, pformatetc->dwAspect, pformatetc->lindex,
-          pformatetc->tymed);
+    GetClipboardFormatNameW(pformatetc->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    if (pformatetc->cfFormat != CF_HDROP || pformatetc->tymed != TYMED_HGLOBAL)
+    debug("shell_item::QueryGetData(cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})",
+          pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
+          pformatetc->lindex, pformatetc->tymed);
+
+    if (pformatetc->cfFormat != cf_shell_id_list || pformatetc->tymed != TYMED_HGLOBAL)
         return DV_E_TYMED;
 
     return S_OK;
@@ -213,7 +280,7 @@ HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL f
 
 HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) {
     if (dwDirection == DATADIR_GET) {
-        auto sief = new shell_item_enum_format;
+        auto sief = new shell_item_enum_format(cf_shell_id_list);
 
         return sief->QueryInterface(IID_IEnumFORMATETC, (void**)ppenumFormatEtc);
     }
@@ -233,8 +300,8 @@ HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
     UNIMPLEMENTED; // FIXME
 }
 
-shell_item_enum_format::shell_item_enum_format() {
-    formats.emplace_back(CF_HDROP, TYMED_HGLOBAL);
+shell_item_enum_format::shell_item_enum_format(CLIPFORMAT cf_shell_id_list) {
+    formats.emplace_back(cf_shell_id_list, TYMED_HGLOBAL);
 }
 
 HRESULT shell_item_enum_format::QueryInterface(REFIID iid, void** ppv) {
