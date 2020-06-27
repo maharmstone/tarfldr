@@ -19,6 +19,8 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
         *ppv = static_cast<IPersistFolder3*>(this);
     else if (iid == IID_IObjectWithFolderEnumMode)
         *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
+    else if (iid == IID_IShellFolderViewCB)
+        *ppv = static_cast<IShellFolderViewCB*>(this);
     else {
         if (iid == IID_IExplorerPaneVisibility)
             debug("shell_folder::QueryInterface: unsupported interface IID_IExplorerPaneVisibility");
@@ -227,7 +229,8 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
         sfvc.cbSize = sizeof(sfvc);
         sfvc.pshf = static_cast<IShellFolder*>(this);
         sfvc.psvOuter = nullptr;
-        sfvc.psfvcb = nullptr;
+
+        QueryInterface(IID_IShellFolderViewCB, (void**)&sfvc.psfvcb);
 
         return SHCreateShellFolderView(&sfvc, (IShellView**)ppv);
     }
@@ -473,6 +476,12 @@ HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE* pfeMode) {
     *pfeMode = folder_enum_mode;
 
     return S_OK;
+}
+
+HRESULT shell_folder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    debug("shell_folder::MessageSFVCB({}, {}, {})", uMsg, wParam, lParam);
+
+    UNIMPLEMENTED;
 }
 
 shell_folder::shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl) : tar(tar), root(root) {

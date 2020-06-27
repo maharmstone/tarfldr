@@ -1,6 +1,7 @@
 #define _WIN32_WINNT 0x0601 // Windows 7
 
 #include <windows.h>
+#include <shlobj.h>
 #include <shobjidl.h>
 #include <string>
 #include <vector>
@@ -86,7 +87,7 @@ private:
     const std::filesystem::path archive_fn;
 };
 
-class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode {
+class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB {
 public:
     shell_folder() { }
     shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl);
@@ -133,6 +134,10 @@ public:
 
     HRESULT __stdcall SetMode(FOLDER_ENUM_MODE feMode);
     HRESULT __stdcall GetMode(FOLDER_ENUM_MODE *pfeMode);
+
+    // IShellFolderViewCB
+
+    HRESULT __stdcall MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 private:
     tar_item& get_item_from_pidl_child(const ITEMID_CHILD* pidl);
