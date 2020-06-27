@@ -7,21 +7,21 @@
 
 using namespace std;
 
-shell_context_menu::shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir, const string_view& full_path,
-                                       const std::shared_ptr<tar_info>& tar) : is_dir(is_dir), full_path(full_path), tar(tar) {
+shell_item::shell_item(PIDLIST_ABSOLUTE pidl, bool is_dir, const string_view& full_path,
+                       const std::shared_ptr<tar_info>& tar) : is_dir(is_dir), full_path(full_path), tar(tar) {
     this->pidl = ILCloneFull(pidl);
 }
 
-shell_context_menu::~shell_context_menu() {
+shell_item::~shell_item() {
     if (pidl)
         ILFree(pidl);
 }
 
-HRESULT shell_context_menu::QueryInterface(REFIID iid, void** ppv) {
+HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IContextMenu)
         *ppv = static_cast<IContextMenu*>(this);
     else {
-        debug("shell_context_menu::QueryInterface: unsupported interface {}", iid);
+        debug("shell_item::QueryInterface: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -32,11 +32,11 @@ HRESULT shell_context_menu::QueryInterface(REFIID iid, void** ppv) {
     return S_OK;
 }
 
-ULONG shell_context_menu::AddRef() {
+ULONG shell_item::AddRef() {
     return InterlockedIncrement(&refcount);
 }
 
-ULONG shell_context_menu::Release() {
+ULONG shell_item::Release() {
     LONG rc = InterlockedDecrement(&refcount);
 
     if (rc == 0)
@@ -45,12 +45,12 @@ ULONG shell_context_menu::Release() {
     return rc;
 }
 
-HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
+HRESULT shell_item::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
                                              UINT idCmdLast, UINT uFlags) {
     UINT cmd = idCmdFirst;
     MENUITEMINFOW mii;
 
-    debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
+    debug("shell_item::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
 
     mii.cbSize = sizeof(mii);
@@ -78,11 +78,11 @@ static filesystem::path get_temp_file_name(const filesystem::path& dir, const u1
     return tmpfn;
 }
 
-HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
+HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
 
-    debug("shell_context_menu::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
+    debug("shell_item::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
           pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((uintptr_t)pici->lpVerb) : pici->lpVerb,
           pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
           (void*)pici->hIcon);
@@ -137,9 +137,9 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     return E_INVALIDARG;
 }
 
-HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
+HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
                                              CHAR* pszName, UINT cchMax) {
-    debug("shell_context_menu::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
+    debug("shell_item::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
           (void*)pReserved, (void*)pszName, cchMax);
 
     if (idCmd != 0)

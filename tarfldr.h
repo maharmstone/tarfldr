@@ -174,11 +174,11 @@ private:
     size_t index = 0;
 };
 
-class shell_context_menu : public IContextMenu {
+class shell_item : public IContextMenu {
 public:
-    shell_context_menu(PIDLIST_ABSOLUTE pidl, bool is_dir, const std::string_view& full_path,
-                       const std::shared_ptr<tar_info>& tar);
-    virtual ~shell_context_menu();
+    shell_item(PIDLIST_ABSOLUTE pidl, bool is_dir, const std::string_view& full_path,
+               const std::shared_ptr<tar_info>& tar);
+    virtual ~shell_item();
 
     // IUnknown
 
