@@ -163,6 +163,16 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
 }
 
 HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
+    if (!pformatetcIn || !pmedium)
+        return E_INVALIDARG;
+
+    if (pformatetcIn->cfFormat != CF_HDROP || pformatetcIn->tymed != TYMED_HGLOBAL)
+        return E_INVALIDARG;
+
+    debug("shell_item::GetData(pformatetcIn = [cfFormat = {}, ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])",
+          pformatetcIn->cfFormat, (void*)pformatetcIn->ptd, pformatetcIn->dwAspect,
+          pformatetcIn->lindex, pformatetcIn->tymed, pmedium->tymed, pmedium->hGlobal);
+
     UNIMPLEMENTED; // FIXME
 }
 
@@ -178,8 +188,8 @@ HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
           pformatetc->cfFormat, (void*)pformatetc->ptd, pformatetc->dwAspect, pformatetc->lindex,
           pformatetc->tymed);
 
-    if (pformatetc->cfFormat != CF_HDROP)
-        return E_INVALIDARG;
+    if (pformatetc->cfFormat != CF_HDROP || pformatetc->tymed != TYMED_HGLOBAL)
+        return DV_E_TYMED;
 
     return S_OK;
 }
