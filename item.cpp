@@ -171,7 +171,17 @@ HRESULT shell_item::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) {
 }
 
 HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
-    UNIMPLEMENTED; // FIXME
+    if (!pformatetc)
+        return E_INVALIDARG;
+
+    debug("shell_item::QueryGetData(cfFormat = {}, ptd = {}, dwAspect = {}, lindex = {}, tymed = {})",
+          pformatetc->cfFormat, (void*)pformatetc->ptd, pformatetc->dwAspect, pformatetc->lindex,
+          pformatetc->tymed);
+
+    if (pformatetc->cfFormat != CF_HDROP)
+        return E_INVALIDARG;
+
+    return S_OK;
 }
 
 HRESULT shell_item::GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) {
