@@ -62,13 +62,15 @@ typedef struct {
 
 class tar_item {
 public:
-    tar_item(const std::string_view& name, bool dir, const std::string_view& full_path) : name(name), dir(dir), full_path(full_path) { }
+    tar_item(const std::string_view& name, int64_t size, bool dir, const std::string_view& full_path) :
+        name(name), size(size), dir(dir), full_path(full_path) { }
 
     ITEMID_CHILD* make_pidl_child() const;
     void find_child(const std::u16string_view& name, tar_item** ret);
     SFGAOF get_atts() const;
 
     std::string name, full_path;
+    int64_t size;
     bool dir;
     std::vector<tar_item> children;
 };
@@ -82,7 +84,7 @@ public:
     tar_item root;
 
 private:
-    void add_entry(const std::string_view& fn);
+    void add_entry(const std::string_view& fn, int64_t size);
 
     const std::filesystem::path archive_fn;
 };

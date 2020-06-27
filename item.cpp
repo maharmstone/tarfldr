@@ -340,7 +340,7 @@ HGLOBAL shell_item::make_file_descriptor() {
             return nullptr;
         }
 
-        fd->dwFlags = FD_ATTRIBUTES | FD_UNICODE; // FIXME
+        fd->dwFlags = FD_ATTRIBUTES | FD_FILESIZE | FD_UNICODE; // FIXME
 
         if (item->dir)
             fd->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
@@ -349,7 +349,9 @@ HGLOBAL shell_item::make_file_descriptor() {
 
         // FIXME - other attributes
         // FIXME - times
-        // FIXME - size
+
+        fd->nFileSizeHigh = item->size >> 32;
+        fd->nFileSizeLow = item->size & 0xffffffff;
 
         memcpy(fd->cFileName, name.c_str(), (name.length() + 1) * sizeof(char16_t));
 
