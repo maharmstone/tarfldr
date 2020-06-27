@@ -36,7 +36,22 @@ HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
     else if (iid == IID_IDataObject)
         *ppv = static_cast<IDataObject*>(this);
     else {
-        debug("shell_item::QueryInterface: unsupported interface {}", iid);
+        if (iid == IID_IStdMarshalInfo)
+            debug("shell_item::QueryInterface: unsupported interface IID_IStdMarshalInfo");
+        else if (iid == IID_INoMarshal)
+            debug("shell_item::QueryInterface: unsupported interface IID_INoMarshal");
+        else if (iid == IID_IAgileObject)
+            debug("shell_item::QueryInterface: unsupported interface IID_IAgileObject");
+        else if (iid == IID_ICallFactory)
+            debug("shell_item::QueryInterface: unsupported interface IID_ICallFactory");
+        else if (iid == IID_IExternalConnection)
+            debug("shell_item::QueryInterface: unsupported interface IID_IExternalConnection");
+        else if (iid == IID_IMarshal)
+            debug("shell_item::QueryInterface: unsupported interface IID_IMarshal");
+        else if (iid == IID_IDataObjectAsyncCapability)
+            debug("shell_item::QueryInterface: unsupported interface IID_IDataObjectAsyncCapability");
+        else
+            debug("shell_item::QueryInterface: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
