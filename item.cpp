@@ -202,8 +202,14 @@ HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL f
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC* *ppenumFormatEtc) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) {
+    if (dwDirection == DATADIR_GET) {
+        auto sief = new shell_item_enum_format;
+
+        return sief->QueryInterface(IID_IEnumFORMATETC, (void**)ppenumFormatEtc);
+    }
+
+    return E_NOTIMPL;
 }
 
 HRESULT shell_item::DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink, DWORD* pdwConnection) {
@@ -215,5 +221,49 @@ HRESULT shell_item::DUnadvise(DWORD dwConnection) {
 }
 
 HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item_enum_format::QueryInterface(REFIID iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_IEnumFORMATETC)
+        *ppv = static_cast<IEnumFORMATETC*>(this);
+    else {
+        debug("shell_item_enum_format::QueryInterface: unsupported interface {}", iid);
+
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    reinterpret_cast<IUnknown*>(*ppv)->AddRef();
+
+    return S_OK;
+}
+
+ULONG shell_item_enum_format::AddRef() {
+    return InterlockedIncrement(&refcount);
+}
+
+ULONG shell_item_enum_format::Release() {
+    LONG rc = InterlockedDecrement(&refcount);
+
+    if (rc == 0)
+        delete this;
+
+    return rc;
+}
+
+HRESULT shell_item_enum_format::Next(ULONG celt, FORMATETC* rgelt, ULONG* pceltFetched) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item_enum_format::Skip(ULONG celt) {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item_enum_format::Reset() {
+    UNIMPLEMENTED; // FIXME
+}
+
+HRESULT shell_item_enum_format::Clone(IEnumFORMATETC** ppenum) {
     UNIMPLEMENTED; // FIXME
 }

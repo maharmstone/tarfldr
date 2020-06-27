@@ -202,7 +202,7 @@ public:
     HRESULT __stdcall GetCanonicalFormatEtc(FORMATETC* pformatectIn,
                                             FORMATETC* pformatetcOut);
     HRESULT __stdcall SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL fRelease);
-    HRESULT __stdcall EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC* *ppenumFormatEtc);
+    HRESULT __stdcall EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc);
     HRESULT __stdcall DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink,
                               DWORD* pdwConnection);
     HRESULT __stdcall DUnadvise(DWORD dwConnection);
@@ -214,6 +214,25 @@ private:
     bool is_dir;
     std::string full_path;
     std::shared_ptr<tar_info> tar;
+};
+
+class shell_item_enum_format : public IEnumFORMATETC {
+public:
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // IEnumFORMATETC
+
+    HRESULT __stdcall Next(ULONG celt, FORMATETC* rgelt, ULONG* pceltFetched);
+    HRESULT __stdcall Skip(ULONG celt);
+    HRESULT __stdcall Reset();
+    HRESULT __stdcall Clone(IEnumFORMATETC** ppenum);
+
+private:
+    LONG refcount = 0;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
