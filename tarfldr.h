@@ -213,6 +213,7 @@ public:
 
 private:
     HGLOBAL make_shell_id_list();
+    HGLOBAL make_file_descriptor();
 
     LONG refcount = 0;
     PIDLIST_ABSOLUTE root_pidl;

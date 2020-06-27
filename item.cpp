@@ -253,6 +253,12 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
         pmedium->pUnkForRelease = nullptr;
 
         return S_OK;
+    } else if (pformatetcIn->cfFormat == cf_file_descriptor && pformatetcIn->tymed == TYMED_HGLOBAL) {
+        pmedium->tymed = TYMED_HGLOBAL;
+        pmedium->hGlobal = make_file_descriptor();
+        pmedium->pUnkForRelease = nullptr;
+
+        return S_OK;
     }
 
     return E_INVALIDARG;
@@ -304,6 +310,50 @@ HGLOBAL shell_item::make_shell_id_list() {
 
         ptr += child_pidl_size;
         off++;
+    }
+
+    GlobalUnlock(hg);
+
+    return hg;
+}
+
+HGLOBAL shell_item::make_file_descriptor() {
+    HGLOBAL hg;
+    FILEGROUPDESCRIPTORW* fgd;
+    FILEDESCRIPTORW* fd;
+
+    hg = GlobalAlloc(GHND | GMEM_SHARE, offsetof(FILEGROUPDESCRIPTORW, fgd) + (itemlist.size() * sizeof(FILEDESCRIPTORW)));
+
+    if (!hg)
+        return nullptr;
+
+    fgd = (FILEGROUPDESCRIPTORW*)GlobalLock(hg);
+    fgd->cItems = itemlist.size();
+
+    fd = &fgd->fgd[0];
+
+    for (auto item : itemlist) {
+        auto name = utf8_to_utf16(item->name);
+
+        if (name.length() >= MAX_PATH) {
+            GlobalUnlock(hg);
+            return nullptr;
+        }
+
+        fd->dwFlags = FD_ATTRIBUTES | FD_UNICODE; // FIXME
+
+        if (item->dir)
+            fd->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+        else
+            fd->dwFileAttributes = 0;
+
+        // FIXME - other attributes
+        // FIXME - times
+        // FIXME - size
+
+        memcpy(fd->cFileName, name.c_str(), (name.length() + 1) * sizeof(char16_t));
+
+        fd++;
     }
 
     GlobalUnlock(hg);
