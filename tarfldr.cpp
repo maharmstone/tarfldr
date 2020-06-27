@@ -345,6 +345,45 @@ SFGAOF tar_item::get_atts() const {
     return atts;
 }
 
+tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item) : item(item) {
+    struct archive_entry* entry;
+
+    a = archive_read_new();
+
+    try {
+        int r;
+        bool found = false;
+
+        archive_read_support_filter_all(a);
+        archive_read_support_format_all(a);
+
+        r = archive_read_open_filename(a, (char*)tar->archive_fn.u8string().c_str(), 20480);
+
+        if (r != ARCHIVE_OK)
+            throw runtime_error(archive_error_string(a));
+
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            string_view name = archive_entry_pathname(entry);
+
+            if (name == item.full_path) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            throw formatted_error("Could not find {} in archive.", item.full_path);
+    } catch (...) {
+        archive_read_free(a);
+        throw;
+    }
+}
+
+tar_item_stream::~tar_item_stream() {
+    if (a)
+        archive_read_free(a);
+}
+
 HRESULT tar_item_stream::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_ISequentialStream || iid == IID_IStream)
         *ppv = static_cast<IStream*>(this);
@@ -374,7 +413,46 @@ ULONG tar_item_stream::Release() {
 }
 
 HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
-    UNIMPLEMENTED; // FIXME
+    int r;
+    size_t size, copy_size;
+    int64_t offset;
+    const void* readbuf;
+
+    *pcbRead = 0;
+
+    if (!buf.empty()) {
+        size_t copy_size = min(buf.size(), (size_t)cb);
+
+        if (copy_size > 0) {
+            memcpy(pv, buf.data(), copy_size);
+            buf = buf.substr(copy_size);
+
+            cb -= copy_size;
+            *pcbRead += copy_size;
+            pv = (uint8_t*)pv + copy_size;
+        }
+    }
+
+    if (cb == 0)
+        return S_OK;
+
+    r = archive_read_data_block(a, &readbuf, &size, &offset);
+
+    if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
+        throw runtime_error(archive_error_string(a));
+
+    if (size == 0)
+        return S_OK;
+
+    copy_size = min(size, (size_t)cb);
+
+    memcpy(pv, readbuf, copy_size);
+    *pcbRead += copy_size;
+
+    if (size > cb)
+        buf.append(string_view((char*)readbuf + cb, size - cb));
+
+    return S_OK;
 }
 
 HRESULT tar_item_stream::Write(const void* pv, ULONG cb, ULONG* pcbWritten) {

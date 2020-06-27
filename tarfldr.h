@@ -82,11 +82,10 @@ public:
     void extract_file(const std::string& path, const std::filesystem::path& dest);
 
     tar_item root;
+    const std::filesystem::path archive_fn;
 
 private:
     void add_entry(const std::string_view& fn, int64_t size);
-
-    const std::filesystem::path archive_fn;
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB {
@@ -257,7 +256,8 @@ private:
 
 class tar_item_stream : public IStream {
 public:
-    tar_item_stream(tar_item& item) : item(item) { }
+    tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item);
+    ~tar_item_stream();
 
     // IUnknown
 
@@ -284,7 +284,9 @@ public:
 
 private:
     LONG refcount = 0;
+    struct archive* a;
     tar_item& item;
+    std::string buf;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {

@@ -263,7 +263,7 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
         if (pformatetcIn->lindex >= itemlist.size())
             return E_INVALIDARG;
 
-        auto tis = new tar_item_stream(*itemlist[pformatetcIn->lindex]);
+        auto tis = new tar_item_stream(tar, *itemlist[pformatetcIn->lindex]);
         HRESULT hr;
 
         pmedium->tymed = TYMED_ISTREAM;
