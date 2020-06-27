@@ -26,6 +26,24 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
             debug("shell_folder::QueryInterface: unsupported interface IID_IExplorerPaneVisibility");
         else if (iid == IID_IPersistIDList)
             debug("shell_folder::QueryInterface: unsupported interface IID_IPersistIDList");
+        else if (iid == IID_IFolderFilter)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IFolderFilter");
+        else if (iid == IID_IShellItem)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IShellItem");
+        else if (iid == IID_IParentAndItem)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IParentAndItem");
+        else if (iid == IID_IFolderView)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IFolderView");
+        else if (iid == IID_IFolderViewSettings)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IFolderViewSettings");
+        else if (iid == IID_IObjectWithSite)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IObjectWithSite");
+        else if (iid == IID_IInternetSecurityManager)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IInternetSecurityManager");
+        else if (iid == IID_IShellIcon)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IShellIcon");
+        else if (iid == IID_IShellIconOverlay)
+            debug("shell_folder::QueryInterface: unsupported interface IID_IShellIconOverlay");
         else
             debug("shell_folder::QueryInterface: unsupported interface {}", iid);
 
