@@ -9,3 +9,6 @@
 #define IDS_TYPE                       105
 #define IDS_MODIFIED                   106
 #define IDI_TAR_ICON                   107
+#define IDS_USER                       108
+#define IDS_GROUP                      109
+#define IDS_MODE                       110

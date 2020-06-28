@@ -66,14 +66,15 @@ typedef struct {
 class tar_item {
 public:
     tar_item(const std::string_view& name, int64_t size, bool dir,
-             const std::string_view& full_path, const std::optional<time_t>& mtime) :
-        name(name), size(size), dir(dir), full_path(full_path), mtime(mtime) { }
+             const std::string_view& full_path, const std::optional<time_t>& mtime,
+             const std::string_view& user, const std::string_view& group) :
+        name(name), size(size), dir(dir), full_path(full_path), mtime(mtime), user(user), group(group) { }
 
     ITEMID_CHILD* make_pidl_child() const;
     void find_child(const std::u16string_view& name, tar_item** ret);
     SFGAOF get_atts() const;
 
-    std::string name, full_path;
+    std::string name, full_path, user, group;
     int64_t size;
     bool dir;
     std::vector<tar_item> children;
@@ -88,7 +89,8 @@ public:
     const std::filesystem::path archive_fn;
 
 private:
-    void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime, bool is_dir);
+    void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime, bool is_dir,
+                   const char* user, const char* group);
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB, public IExplorerPaneVisibility {

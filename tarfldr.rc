@@ -10,6 +10,9 @@ STRINGTABLE
     IDS_SIZE		"Size"
     IDS_TYPE		"Type"
     IDS_MODIFIED	"Date modified"
+    IDS_USER	    "User"
+    IDS_GROUP	    "Group"
+    IDS_MODE	    "Mode"
 }
 
 IDI_TAR_ICON ICON tar.ico

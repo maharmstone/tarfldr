@@ -6,11 +6,20 @@
 
 using namespace std;
 
+const GUID FMTID_POSIXAttributes = { 0x34379fdd, 0x93be, 0x4490, { 0x98, 0x58, 0x04, 0x5d, 0x2c, 0x12, 0x85, 0xac } };
+
+#define PID_POSIX_USER      2
+#define PID_POSIX_GROUP     3
+#define PID_POSIX_MODE      4
+
 static const header_info headers[] = {
     { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME },
     { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE },
     { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE },
     { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME },
+    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER },
+    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP },
+    { IDS_MODE, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_MODE },
 };
 
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
@@ -487,74 +496,101 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
     debug("shell_folder::GetDetailsEx({}, {} (fmtid = {}, pid = {}), {}", (void*)pidl,
           (void*)pscid, pscid->fmtid, pscid->pid, (void*)pv);
 
-    if (pscid->fmtid != FMTID_Storage)
-        return E_INVALIDARG;
+    if (pscid->fmtid != FMTID_Storage && pscid->fmtid != FMTID_POSIXAttributes)
+        return E_NOTIMPL;
 
     try {
         tar_item& item = get_item_from_pidl_child(pidl);
 
-        switch (pscid->pid) {
-            case PID_STG_NAME:
-                pv->vt = VT_BSTR;
-                pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.name).c_str());
+        if (pscid->fmtid == FMTID_Storage) {
+            switch (pscid->pid) {
+                case PID_STG_NAME:
+                    pv->vt = VT_BSTR;
+                    pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.name).c_str());
 
-                return S_OK;
+                    return S_OK;
 
-            case PID_STG_SIZE:
-                if (item.dir)
-                    return S_FALSE;
+                case PID_STG_SIZE:
+                    if (item.dir)
+                        return S_FALSE;
 
-                pv->vt = VT_I8;
-                pv->llVal = item.size;
+                    pv->vt = VT_I8;
+                    pv->llVal = item.size;
 
-                return S_OK;
+                    return S_OK;
 
-            case PID_STG_STORAGETYPE: {
-                SHFILEINFOW sfi;
+                case PID_STG_STORAGETYPE: {
+                    SHFILEINFOW sfi;
 
-                if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item.name).c_str(),
-                                    item.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
-                                    &sfi, sizeof(sfi),
-                                    SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
-                    throw last_error("SHGetFileInfo", GetLastError());
+                    if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item.name).c_str(),
+                                        item.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                                        &sfi, sizeof(sfi),
+                                        SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
+                        throw last_error("SHGetFileInfo", GetLastError());
+                    }
+
+                    pv->vt = VT_BSTR;
+                    pv->bstrVal = SysAllocString(sfi.szTypeName);
+
+                    return S_OK;
                 }
 
-                pv->vt = VT_BSTR;
-                pv->bstrVal = SysAllocString(sfi.szTypeName);
+                case PID_STG_WRITETIME: {
+                    if (!item.mtime.has_value())
+                        return S_FALSE;
 
-                return S_OK;
+                    pv->vt = VT_DATE;
+                    pv->date = ((double)item.mtime.value() / 86400.0) + 25569.0;
+
+                    return S_OK;
+                }
+
+                default:
+                    return E_NOTIMPL;
             }
+        } else if (pscid->fmtid == FMTID_POSIXAttributes) {
+            switch (pscid->pid) {
+                case PID_POSIX_USER:
+                    pv->vt = VT_BSTR;
+                    pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.user).c_str());
 
-            case PID_STG_WRITETIME: {
-                if (!item.mtime.has_value())
-                    return S_FALSE;
+                    return S_OK;
 
-                pv->vt = VT_DATE;
-                pv->date = ((double)item.mtime.value() / 86400.0) + 25569.0;
+                case PID_POSIX_GROUP:
+                    pv->vt = VT_BSTR;
+                    pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.group).c_str());
 
-                return S_OK;
+                    return S_OK;
+
+                // FIXME - PID_POSIX_MODE
+
+                default:
+                    return E_NOTIMPL;
             }
-
-            default:
-                return E_NOTIMPL;
         }
     } catch (const invalid_argument&) {
         return E_INVALIDARG;
     } catch (...) {
         return E_FAIL;
     }
+
+    return E_FAIL;
 }
 
 HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd) {
+    HRESULT hr;
+    SHCOLUMNID col;
+    VARIANT v;
+
     debug("shell_folder::GetDetailsOf({}, {}, {})", (void*)pidl, iColumn, (void*)psd);
+
+    span sp = headers;
+
+    if (iColumn >= sp.size())
+        return E_INVALIDARG;
 
     if (!pidl) {
         WCHAR buf[256];
-
-        span sp = headers;
-
-        if (iColumn >= sp.size())
-            return E_INVALIDARG;
 
         if (LoadStringW(instance, sp[iColumn].res_num, buf, sizeof(buf) / sizeof(WCHAR)) <= 0)
             return E_FAIL;
@@ -568,7 +604,34 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
         return S_OK;
     }
 
-    UNIMPLEMENTED; // FIXME
+    col.fmtid = *sp[iColumn].fmtid;
+    col.pid = sp[iColumn].pid;
+
+    VariantInit(&v);
+
+    hr = GetDetailsEx(pidl, &col, &v);
+
+    if (FAILED(hr)) {
+        VariantClear(&v);
+        return hr;
+    }
+
+    hr = VariantChangeType(&v, &v, 0, VT_BSTR);
+
+    if (FAILED(hr)) {
+        VariantClear(&v);
+        return hr;
+    }
+
+    psd->fmt = sp[iColumn].fmt;
+    psd->cxChar = sp[iColumn].cxChar;
+    psd->str.uType = STRRET_WSTR;
+    psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc((wcslen(v.bstrVal) + 1) * sizeof(WCHAR));
+    memcpy(psd->str.pOleStr, v.bstrVal, (wcslen(v.bstrVal) + 1) * sizeof(WCHAR));
+
+    VariantClear(&v);
+
+    return S_OK;
 }
 
 HRESULT shell_folder::MapColumnToSCID(UINT iColumn, SHCOLUMNID* pscid) {
