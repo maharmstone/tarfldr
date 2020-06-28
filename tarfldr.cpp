@@ -332,13 +332,13 @@ void tar_item::find_child(const std::u16string_view& name, tar_item** ret) {
 }
 
 SFGAOF tar_item::get_atts() const {
-    SFGAOF atts;
+    SFGAOF atts = SFGAO_CANCOPY;
 
     if (dir) {
-        atts = SFGAO_FOLDER | SFGAO_BROWSABLE;
+        atts |= SFGAO_FOLDER | SFGAO_BROWSABLE;
         atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
     } else
-        atts = SFGAO_STREAM;
+        atts |= SFGAO_STREAM;
 
     // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
 

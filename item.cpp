@@ -12,8 +12,8 @@ static const struct {
     const char16_t* verbw;
     function<HRESULT(shell_item*, CMINVOKECOMMANDINFO*)> cmd;
 } menu_items[] = {
-    { u"&Open", "Open", u"Open", &shell_item::open_cmd },
-    { u"&Copy", "Copy", u"Copy", &shell_item::copy_cmd }
+    { u"&Open", "open", u"open", &shell_item::open_cmd },
+    { u"&Copy", "copy", u"copy", &shell_item::copy_cmd }
 };
 
 // FIXME - others: Extract, Cut, Paste, Properties
