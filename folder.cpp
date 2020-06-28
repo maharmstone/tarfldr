@@ -383,8 +383,36 @@ HRESULT shell_folder::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF *pcsFlags)
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID *pscid, VARIANT *pv) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid, VARIANT* pv) {
+    debug("shell_folder::GetDetailsEx({}, {} (fmtid = {}, pid = {}), {}", (void*)pidl,
+          (void*)pscid, pscid->fmtid, pscid->pid, (void*)pv);
+
+    if (pscid->fmtid != FMTID_Storage)
+        return E_INVALIDARG;
+
+    try {
+        tar_item& item = get_item_from_pidl_child(pidl);
+
+        switch (pscid->pid) {
+            case PID_STG_SIZE:
+                if (item.dir)
+                    return E_INVALIDARG;
+
+                pv->vt = VT_I8;
+                pv->llVal = item.size;
+
+                return S_OK;
+
+            default:
+                return E_NOTIMPL;
+        }
+
+        // FIXME - PID_STG_NAME (VT_LPWSTR)
+        // FIXME - PID_STG_STORAGETYPE (?)
+        // FIXME - PID_STG_WRITETIME (VT_FILETIME)
+    } catch (const invalid_argument&) {
+        return E_INVALIDARG;
+    }
 }
 
 HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd) {
