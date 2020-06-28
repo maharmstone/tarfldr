@@ -294,7 +294,7 @@ HGLOBAL shell_item::make_shell_id_list() {
     for (auto item : itemlist) {
         auto child_pidl = item->make_pidl_child();
 
-        size += ILGetSize(child_pidl);
+        size += ILGetSize(child_pidl) + offsetof(ITEMIDLIST, mkid.abID);
 
         ILFree(child_pidl);
     }
@@ -322,9 +322,11 @@ HGLOBAL shell_item::make_shell_id_list() {
         *off = ptr - (uint8_t*)cida;
         memcpy(ptr, child_pidl, child_pidl_size);
 
+        ((ITEMIDLIST*)(ptr + child_pidl_size))->mkid.cb = 0;
+
         ILFree(child_pidl);
 
-        ptr += child_pidl_size;
+        ptr += child_pidl_size + offsetof(ITEMIDLIST, mkid.abID);
         off++;
     }
 
