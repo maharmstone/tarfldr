@@ -311,7 +311,7 @@ HGLOBAL shell_item::make_shell_id_list() {
     ptr = (uint8_t*)cida + offsetof(CIDA, aoffset) + ((cida->cidl + 1) * sizeof(UINT));
 
     *off = ptr - (uint8_t*)cida;
-    memcpy(ptr, &root_pidl, root_pidl_size);
+    memcpy(ptr, root_pidl, root_pidl_size);
     ptr += root_pidl_size;
     off++;
 
