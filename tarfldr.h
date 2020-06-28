@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <filesystem>
 #include <optional>
+#include <functional>
 #include <stdint.h>
 #include <shlguid.h>
 #include <fmt/format.h>
@@ -54,14 +55,6 @@ public:
 };
 
 typedef std::unique_ptr<HANDLE, handle_closer> unique_handle;
-
-typedef struct {
-    unsigned int res_num;
-    int fmt;
-    int cxChar;
-    const GUID* fmtid;
-    DWORD pid;
-} header_info;
 
 class tar_item {
 public:
@@ -151,6 +144,9 @@ public:
 
     HRESULT __stdcall GetPaneState(REFEXPLORERPANE ep, EXPLORERPANESTATE* peps);
 
+    int name_compare(const tar_item& item1, const tar_item& item2) const;
+    int size_compare(const tar_item& item1, const tar_item& item2) const;
+
 private:
     tar_item& get_item_from_pidl_child(const ITEMID_CHILD* pidl);
 
@@ -160,6 +156,15 @@ private:
     tar_item* root;
     PIDLIST_ABSOLUTE root_pidl = nullptr;
 };
+
+typedef struct {
+    unsigned int res_num;
+    int fmt;
+    int cxChar;
+    const GUID* fmtid;
+    DWORD pid;
+    std::function<int(const tar_item&, const tar_item&)> compare_func;
+} header_info;
 
 class shell_enum : public IEnumIDList {
 public:

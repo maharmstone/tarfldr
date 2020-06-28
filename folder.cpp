@@ -12,14 +12,19 @@ const GUID FMTID_POSIXAttributes = { 0x34379fdd, 0x93be, 0x4490, { 0x98, 0x58, 0
 #define PID_POSIX_GROUP     3
 #define PID_POSIX_MODE      4
 
+static int name_compare(const tar_item& item1, const tar_item& item2);
+static int size_compare(const tar_item& item1, const tar_item& item2);
+static int type_compare(const tar_item& item1, const tar_item& item2);
+static int date_compare(const tar_item& item1, const tar_item& item2);
+
 static const header_info headers[] = {
-    { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME },
-    { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE },
-    { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE },
-    { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME },
-    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER },
-    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP },
-    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE },
+    { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME, name_compare },
+    { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE, size_compare },
+    { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE, type_compare },
+    { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME, date_compare },
+    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER, nullptr },
+    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP, nullptr },
+    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE, nullptr },
 };
 
 #define __S_IFMT        0170000
@@ -248,6 +253,76 @@ HRESULT shell_folder::BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFI
     UNIMPLEMENTED; // FIXME
 }
 
+static int name_compare(const tar_item& item1, const tar_item& item2) {
+    auto val = item1.name.compare(item2.name);
+
+    if (val < 0)
+        return -1;
+    else if (val > 0)
+        return 1;
+    else
+        return 0;
+}
+
+static int size_compare(const tar_item& item1, const tar_item& item2) {
+    int64_t size1 = item1.dir ? 0 : item1.size;
+    int64_t size2 = item2.dir ? 0 : item2.size;
+
+    if (size1 < size2)
+        return -1;
+    else if (size2 < size1)
+        return 1;
+    else
+        return 0;
+}
+
+static int type_compare(const tar_item& item1, const tar_item& item2) {
+    SHFILEINFOW sfi;
+    u16string type1, type2;
+
+    if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item1.name).c_str(),
+                        item1.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                        &sfi, sizeof(sfi),
+                        SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
+        throw last_error("SHGetFileInfo", GetLastError());
+    }
+
+    type1 = (char16_t*)sfi.szTypeName;
+
+    if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item2.name).c_str(),
+                        item2.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                        &sfi, sizeof(sfi),
+                        SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
+        throw last_error("SHGetFileInfo", GetLastError());
+    }
+
+    type2 = (char16_t*)sfi.szTypeName;
+
+    auto val = type1.compare(type2);
+
+    if (val < 0)
+        return -1;
+    else if (val > 0)
+        return 1;
+    else
+        return 0;
+}
+
+static int date_compare(const tar_item& item1, const tar_item& item2) {
+    if (!item1.mtime.has_value() && !item2.mtime.has_value())
+        return 0;
+    else if (!item1.mtime.has_value())
+        return -1;
+    else if (!item2.mtime.has_value())
+        return 1;
+    else if (item1.mtime.value() < item2.mtime.value())
+        return -1;
+    else if (item2.mtime.value() < item1.mtime.value())
+        return 1;
+    else
+        return 0;
+}
+
 HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
     debug("shell_folder::CompareIDs({}, {}, {})", lParam, (void*)pidl1, (void*)pidl2);
 
@@ -258,90 +333,18 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
         uint16_t col = lParam & SHCIDS_COLUMNMASK;
         int res;
 
-        tar_item& item1 = get_item_from_pidl_child(pidl1);
-        tar_item& item2 = get_item_from_pidl_child(pidl2);
+        span h = headers;
 
-        switch (col) {
-            case 0: { // name
-                auto val = item1.name.compare(item2.name);
+        if (col >= h.size())
+            return E_INVALIDARG;
 
-                if (val < 0)
-                    res = -1;
-                else if (val > 0)
-                    res = 1;
-                else
-                    res = 0;
+        if (!h[col].compare_func)
+            res = 0;
+        else {
+            tar_item& item1 = get_item_from_pidl_child(pidl1);
+            tar_item& item2 = get_item_from_pidl_child(pidl2);
 
-                break;
-            }
-
-            case 1: { // size
-                int64_t size1 = item1.dir ? 0 : item1.size;
-                int64_t size2 = item2.dir ? 0 : item2.size;
-
-                if (size1 < size2)
-                    res = -1;
-                else if (size2 < size1)
-                    res = 1;
-                else
-                    res = 0;
-
-                break;
-            }
-
-            case 2: { // type
-                SHFILEINFOW sfi;
-                u16string type1, type2;
-
-                if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item1.name).c_str(),
-                                    item1.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
-                                    &sfi, sizeof(sfi),
-                                    SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
-                    throw last_error("SHGetFileInfo", GetLastError());
-                }
-
-                type1 = (char16_t*)sfi.szTypeName;
-
-                if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item2.name).c_str(),
-                                    item2.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
-                                    &sfi, sizeof(sfi),
-                                    SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
-                    throw last_error("SHGetFileInfo", GetLastError());
-                }
-
-                type2 = (char16_t*)sfi.szTypeName;
-
-                auto val = type1.compare(type2);
-
-                if (val < 0)
-                    res = -1;
-                else if (val > 0)
-                    res = 1;
-                else
-                    res = 0;
-
-                break;
-            }
-
-            case 3: { // date
-                if (!item1.mtime.has_value() && !item2.mtime.has_value())
-                    res = 0;
-                else if (!item1.mtime.has_value())
-                    res = -1;
-                else if (!item2.mtime.has_value())
-                    res = 1;
-                else if (item1.mtime.value() < item2.mtime.value())
-                    res = -1;
-                else if (item2.mtime.value() < item1.mtime.value())
-                    res = 1;
-                else
-                    res = 0;
-
-                break;
-            }
-
-            default:
-                return E_INVALIDARG;
+            res = h[col].compare_func(item1, item2);
         }
 
         return MAKE_HRESULT(SEVERITY_SUCCESS, 0, res == -1 ? 0xffff : res);
