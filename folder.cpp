@@ -16,15 +16,18 @@ static int name_compare(const tar_item& item1, const tar_item& item2);
 static int size_compare(const tar_item& item1, const tar_item& item2);
 static int type_compare(const tar_item& item1, const tar_item& item2);
 static int date_compare(const tar_item& item1, const tar_item& item2);
+static int user_compare(const tar_item& item1, const tar_item& item2);
+static int group_compare(const tar_item& item1, const tar_item& item2);
+static int mode_compare(const tar_item& item1, const tar_item& item2);
 
 static const header_info headers[] = {
     { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME, name_compare },
     { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE, size_compare },
     { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE, type_compare },
     { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME, date_compare },
-    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER, nullptr },
-    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP, nullptr },
-    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE, nullptr },
+    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER, user_compare },
+    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP, group_compare },
+    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE, mode_compare },
 };
 
 #define __S_IFMT        0170000
@@ -318,6 +321,37 @@ static int date_compare(const tar_item& item1, const tar_item& item2) {
     else if (item1.mtime.value() < item2.mtime.value())
         return -1;
     else if (item2.mtime.value() < item1.mtime.value())
+        return 1;
+    else
+        return 0;
+}
+
+static int user_compare(const tar_item& item1, const tar_item& item2) {
+    auto val = item1.user.compare(item2.user);
+
+    if (val < 0)
+        return -1;
+    else if (val > 0)
+        return 1;
+    else
+        return 0;
+}
+
+static int group_compare(const tar_item& item1, const tar_item& item2) {
+    auto val = item1.group.compare(item2.group);
+
+    if (val < 0)
+        return -1;
+    else if (val > 0)
+        return 1;
+    else
+        return 0;
+}
+
+static int mode_compare(const tar_item& item1, const tar_item& item2) {
+    if (item1.mode < item2.mode)
+        return -1;
+    else if (item2.mode < item1.mode)
         return 1;
     else
         return 0;
