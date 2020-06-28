@@ -117,7 +117,7 @@ public:
                                 PITEMID_CHILD *ppidlOut);
     HRESULT __stdcall GetDefaultSearchGUID(GUID *pguid);
     HRESULT __stdcall EnumSearches(IEnumExtraSearch **ppenum);
-    HRESULT __stdcall GetDefaultColumn(DWORD dwRes, ULONG *pSort, ULONG *pDisplay);
+    HRESULT __stdcall GetDefaultColumn(DWORD dwRes, ULONG* pSort, ULONG* pDisplay);
     HRESULT __stdcall GetDefaultColumnState(UINT iColumn, SHCOLSTATEF *pcsFlags);
     HRESULT __stdcall GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID *pscid, VARIANT *pv);
     HRESULT __stdcall GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd);
@@ -164,6 +164,7 @@ typedef struct {
     const GUID* fmtid;
     DWORD pid;
     std::function<int(const tar_item&, const tar_item&)> compare_func;
+    SHCOLSTATEF state;
 } header_info;
 
 class shell_enum : public IEnumIDList {

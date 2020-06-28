@@ -21,13 +21,13 @@ static int group_compare(const tar_item& item1, const tar_item& item2);
 static int mode_compare(const tar_item& item1, const tar_item& item2);
 
 static const header_info headers[] = {
-    { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME, name_compare },
-    { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE, size_compare },
-    { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE, type_compare },
-    { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME, date_compare },
-    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER, user_compare },
-    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP, group_compare },
-    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE, mode_compare },
+    { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME, name_compare, SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT},
+    { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE, size_compare, SHCOLSTATE_TYPE_INT | SHCOLSTATE_ONBYDEFAULT},
+    { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE, type_compare, SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT},
+    { IDS_MODIFIED, LVCFMT_LEFT, 14, &FMTID_Storage, PID_STG_WRITETIME, date_compare, SHCOLSTATE_TYPE_DATE | SHCOLSTATE_ONBYDEFAULT},
+    { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER, user_compare, SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT},
+    { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP, group_compare, SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT},
+    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE, mode_compare, SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT},
 };
 
 #define __S_IFMT        0170000
@@ -529,8 +529,15 @@ HRESULT shell_folder::GetDefaultColumn(DWORD dwRes, ULONG *pSort, ULONG *pDispla
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_folder::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF *pcsFlags) {
-    UNIMPLEMENTED; // FIXME
+HRESULT shell_folder::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF* pcsFlags) {
+    span h = headers;
+
+    if (iColumn >= h.size())
+        return E_INVALIDARG;
+
+    *pcsFlags = h[iColumn].state;
+
+    return S_OK;
 }
 
 HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid, VARIANT* pv) {
