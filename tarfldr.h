@@ -55,7 +55,7 @@ public:
 typedef std::unique_ptr<HANDLE, handle_closer> unique_handle;
 
 typedef struct {
-    std::u16string name;
+    unsigned int res_num;
     int fmt;
     int cxChar;
     const GUID* fmtid;

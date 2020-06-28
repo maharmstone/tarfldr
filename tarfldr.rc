@@ -6,4 +6,8 @@ STRINGTABLE
 {
     IDS_OPEN		"&Open"
     IDS_COPY		"&Copy"
+    IDS_NAME		"Name"
+    IDS_SIZE		"Size"
+    IDS_TYPE		"Type"
+    IDS_MODIFIED	"Modified"
 }

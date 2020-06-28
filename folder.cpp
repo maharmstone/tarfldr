@@ -1,15 +1,16 @@
 #include "tarfldr.h"
+#include "resource.h"
 #include <shlobj.h>
 #include <ntquery.h>
 #include <span>
 
 using namespace std;
 
-static const header_info headers[] = { // FIXME - move strings to resource file
-    { u"Name", LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME },
-    { u"Size", LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE },
-    { u"Type", LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE },
-    { u"Modified", LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME },
+static const header_info headers[] = {
+    { IDS_NAME, LVCFMT_LEFT, 15, &FMTID_Storage, PID_STG_NAME },
+    { IDS_SIZE, LVCFMT_RIGHT, 10, &FMTID_Storage, PID_STG_SIZE },
+    { IDS_TYPE, LVCFMT_LEFT, 10, &FMTID_Storage, PID_STG_STORAGETYPE },
+    { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME },
 };
 
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
@@ -390,16 +391,21 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
     debug("shell_folder::GetDetailsOf({}, {}, {})", (void*)pidl, iColumn, (void*)psd);
 
     if (!pidl) {
+        WCHAR buf[256];
+
         span sp = headers;
 
         if (iColumn >= sp.size())
             return E_INVALIDARG;
 
+        if (LoadStringW(instance, sp[iColumn].res_num, buf, sizeof(buf) / sizeof(WCHAR)) <= 0)
+            return E_FAIL;
+
         psd->fmt = sp[iColumn].fmt;
         psd->cxChar = sp[iColumn].cxChar;
         psd->str.uType = STRRET_WSTR;
-        psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc((sp[iColumn].name.length() + 1) * sizeof(char16_t));
-        memcpy(psd->str.pOleStr, sp[iColumn].name.data(), (sp[iColumn].name.length() + 1) * sizeof(char16_t));
+        psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc((wcslen(buf) + 1) * sizeof(WCHAR));
+        memcpy(psd->str.pOleStr, buf, (wcslen(buf) + 1) * sizeof(WCHAR));
 
         return S_OK;
     }
