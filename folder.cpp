@@ -507,7 +507,12 @@ HRESULT shell_folder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 HRESULT shell_folder::GetPaneState(REFEXPLORERPANE ep, EXPLORERPANESTATE* peps) {
     debug("shell_folder::GetPaneState({}, {})", ep, (void*)peps);
 
-    UNIMPLEMENTED;
+    if (ep == EP_Ribbon)
+        *peps = EPS_DEFAULT_ON;
+    else
+        *peps = EPS_DONTCARE;
+
+    return S_OK;
 }
 
 shell_folder::shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl) : tar(tar), root(root) {
