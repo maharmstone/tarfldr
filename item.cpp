@@ -196,10 +196,10 @@ HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     span mi = menu_items;
 
     if (IS_INTRESOURCE(pici->lpVerb)) {
-        if ((int)pici->lpVerb >= mi.size())
+        if ((uintptr_t)pici->lpVerb >= mi.size())
             return E_INVALIDARG;
 
-        return mi[(unsigned int)pici->lpVerb].cmd(this, pici);
+        return mi[(uintptr_t)pici->lpVerb].cmd(this, pici);
     }
 
     for (const auto& mie : mi) {
