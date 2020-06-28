@@ -14,7 +14,7 @@ LONG objs_loaded = 0;
 HINSTANCE instance = nullptr;
 
 void tar_info::add_entry(const string_view& fn, int64_t size, const optional<time_t>& mtime, bool is_dir,
-                         const char* user, const char* group) {
+                         const char* user, const char* group, mode_t mode) {
     vector<string_view> parts;
     string_view file_part;
     tar_item* r;
@@ -71,18 +71,20 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
         }
 
         if (!found) {
-            r->children.emplace_back(p, size, true, "", nullopt, "", "");
+            r->children.emplace_back(p, size, true, "", nullopt, "", "", 0);
             r = &r->children.back();
         }
     }
 
     // add child
 
-    if (!file_part.empty())
-        r->children.emplace_back(file_part, size, is_dir, fn, mtime, user ? user : "", group ? group : "");
+    if (!file_part.empty()) {
+        r->children.emplace_back(file_part, size, is_dir, fn, mtime, user ? user : "",
+                                 group ? group : "", mode);
+    }
 }
 
-tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "") {
+tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0) {
     struct archive_entry* entry;
     struct archive* a = archive_read_new();
 
@@ -99,7 +101,7 @@ tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0
             add_entry(archive_entry_pathname_utf8(entry), archive_entry_size(entry),
                       archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt},
                       archive_entry_filetype(entry) == AE_IFDIR, archive_entry_uname_utf8(entry),
-                      archive_entry_gname_utf8(entry));
+                      archive_entry_gname_utf8(entry), archive_entry_mode(entry));
         }
     } catch (...) {
         archive_read_free(a);

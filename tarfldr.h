@@ -67,8 +67,9 @@ class tar_item {
 public:
     tar_item(const std::string_view& name, int64_t size, bool dir,
              const std::string_view& full_path, const std::optional<time_t>& mtime,
-             const std::string_view& user, const std::string_view& group) :
-        name(name), size(size), dir(dir), full_path(full_path), mtime(mtime), user(user), group(group) { }
+             const std::string_view& user, const std::string_view& group,
+             mode_t mode) :
+        name(name), size(size), dir(dir), full_path(full_path), mtime(mtime), user(user), group(group), mode(mode) { }
 
     ITEMID_CHILD* make_pidl_child() const;
     void find_child(const std::u16string_view& name, tar_item** ret);
@@ -79,6 +80,7 @@ public:
     bool dir;
     std::vector<tar_item> children;
     std::optional<time_t> mtime;
+    mode_t mode;
 };
 
 class tar_info {
@@ -90,7 +92,7 @@ public:
 
 private:
     void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime, bool is_dir,
-                   const char* user, const char* group);
+                   const char* user, const char* group, mode_t mode);
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB, public IExplorerPaneVisibility {

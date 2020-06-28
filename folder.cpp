@@ -19,8 +19,12 @@ static const header_info headers[] = {
     { IDS_MODIFIED, LVCFMT_LEFT, 12, &FMTID_Storage, PID_STG_WRITETIME },
     { IDS_USER, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_USER },
     { IDS_GROUP, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_GROUP },
-    { IDS_MODE, LVCFMT_LEFT, 8, &FMTID_POSIXAttributes, PID_POSIX_MODE },
+    { IDS_MODE, LVCFMT_LEFT, 10, &FMTID_POSIXAttributes, PID_POSIX_MODE },
 };
+
+#define __S_IFMT        0170000
+#define __S_IFDIR       0040000
+#define __S_ISTYPE(mode, mask)  (((mode) & __S_IFMT) == (mask))
 
 HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2)
@@ -562,7 +566,11 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
 
                     return S_OK;
 
-                // FIXME - PID_POSIX_MODE
+                case PID_POSIX_MODE:
+                    pv->vt = VT_I4;
+                    pv->lVal = item.mode;
+
+                    return S_OK;
 
                 default:
                     return E_NOTIMPL;
@@ -616,18 +624,41 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
         return hr;
     }
 
-    hr = VariantChangeType(&v, &v, 0, VT_BSTR);
-
-    if (FAILED(hr)) {
-        VariantClear(&v);
-        return hr;
-    }
-
     psd->fmt = sp[iColumn].fmt;
     psd->cxChar = sp[iColumn].cxChar;
     psd->str.uType = STRRET_WSTR;
-    psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc((wcslen(v.bstrVal) + 1) * sizeof(WCHAR));
-    memcpy(psd->str.pOleStr, v.bstrVal, (wcslen(v.bstrVal) + 1) * sizeof(WCHAR));
+
+    if (col.fmtid == FMTID_POSIXAttributes && col.pid == PID_POSIX_MODE) {
+        mode_t m = (mode_t)v.lVal;
+        char16_t mode[11];
+
+        mode[0] = __S_ISTYPE(m, __S_IFDIR) ? 'd' : '-';
+        mode[1] = m & 0400 ? 'r' : '-';
+        mode[2] = m & 0200 ? 'w' : '-';
+        mode[3] = m & 0100 ? 'x' : '-';
+        mode[4] = m & 0040 ? 'r' : '-';
+        mode[5] = m & 0020 ? 'w' : '-';
+        mode[6] = m & 0010 ? 'x' : '-';
+        mode[7] = m & 0004 ? 'r' : '-';
+        mode[8] = m & 0002 ? 'w' : '-';
+        mode[9] = m & 0001 ? 'x' : '-';
+        mode[10] = 0;
+
+        // FIXME - sticky bits, char / block devices, links, sockets, etc.
+
+        psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc(sizeof(mode));
+        memcpy(psd->str.pOleStr, mode, sizeof(mode));
+    } else {
+        hr = VariantChangeType(&v, &v, 0, VT_BSTR);
+
+        if (FAILED(hr)) {
+            VariantClear(&v);
+            return hr;
+        }
+
+        psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc((wcslen(v.bstrVal) + 1) * sizeof(WCHAR));
+        memcpy(psd->str.pOleStr, v.bstrVal, (wcslen(v.bstrVal) + 1) * sizeof(WCHAR));
+    }
 
     VariantClear(&v);
 
