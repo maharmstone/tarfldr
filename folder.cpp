@@ -402,7 +402,7 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
 
             case PID_STG_SIZE:
                 if (item.dir)
-                    return E_INVALIDARG;
+                    return S_FALSE;
 
                 pv->vt = VT_I8;
                 pv->llVal = item.size;
@@ -425,11 +425,19 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
                 return S_OK;
             }
 
+            case PID_STG_WRITETIME: {
+                if (!item.mtime.has_value())
+                    return S_FALSE;
+
+                pv->vt = VT_DATE;
+                pv->date = ((double)item.mtime.value() / 86400.0) + 25569.0;
+
+                return S_OK;
+            }
+
             default:
                 return E_NOTIMPL;
         }
-
-        // FIXME - PID_STG_WRITETIME (VT_FILETIME)
     } catch (const invalid_argument&) {
         return E_INVALIDARG;
     } catch (...) {
