@@ -13,6 +13,7 @@ static const struct {
     function<HRESULT(shell_item*, CMINVOKECOMMANDINFO*)> cmd;
 } menu_items[] = {
     { u"&Open", "open", u"open", &shell_item::open_cmd },
+    { nullptr, nullptr, nullptr, nullptr },
     { u"&Copy", "copy", u"copy", &shell_item::copy_cmd }
 };
 
@@ -88,11 +89,17 @@ HRESULT shell_item::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirs
 
     for (unsigned int i = 0; i < mi.size(); i++) {
         mii.cbSize = sizeof(mii);
-        mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
-        mii.fType = MFT_STRING;
-        mii.fState = i == 0 ? MFS_DEFAULT : 0;
         mii.wID = cmd;
-        mii.dwTypeData = (WCHAR*)mi[i].name; // FIXME - get from resource file
+
+        if (mi[i].name) {
+            mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
+            mii.fType = MFT_STRING;
+            mii.fState = i == 0 ? MFS_DEFAULT : 0;
+            mii.dwTypeData = (WCHAR*)mi[i].name; // FIXME - get from resource file
+        } else {
+            mii.fMask = MIIM_FTYPE | MIIM_ID;
+            mii.fType = MFT_SEPARATOR;
+        }
 
         InsertMenuItemW(hmenu, indexMenu + i, true, &mii);
         cmd++;
@@ -207,7 +214,7 @@ HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     }
 
     for (const auto& mie : mi) {
-        if (!strcmp(pici->lpVerb, mie.verba))
+        if (mie.verba && !strcmp(pici->lpVerb, mie.verba))
             return mie.cmd(this, pici);
     }
 
@@ -230,10 +237,16 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
             return S_OK;
 
         case GCS_VERBA:
-            return StringCchCopyA(pszName, cchMax, mi[0].verba);
+            if (!mi[idCmd].verba)
+                return E_INVALIDARG;
+
+            return StringCchCopyA(pszName, cchMax, mi[idCmd].verba);
 
         case GCS_VERBW:
-            return StringCchCopyW((STRSAFE_LPWSTR)pszName, cchMax, (WCHAR*)mi[0].verbw);
+            if (!mi[idCmd].verbw)
+                return E_INVALIDARG;
+
+            return StringCchCopyW((STRSAFE_LPWSTR)pszName, cchMax, (WCHAR*)mi[idCmd].verbw);
     }
 
     return E_INVALIDARG;
