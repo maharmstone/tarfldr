@@ -151,7 +151,11 @@ HRESULT shell_item::open_cmd(CMINVOKECOMMANDINFO* pici) {
                     fn.replace_extension(ext);
                 }
 
-                tar->extract_file(item->full_path, fn);
+                {
+                    tar_item_stream tis(tar, *item);
+
+                    tis.extract_file(fn);
+                }
 
                 // open using normal handler
 

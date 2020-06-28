@@ -79,8 +79,6 @@ class tar_info {
 public:
     tar_info(const std::filesystem::path& fn);
 
-    void extract_file(const std::string& path, const std::filesystem::path& dest);
-
     tar_item root;
     const std::filesystem::path archive_fn;
 
@@ -285,6 +283,8 @@ public:
     HRESULT __stdcall UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
     HRESULT __stdcall Stat(STATSTG* pstatstg, DWORD grfStatFlag);
     HRESULT __stdcall Clone(IStream** ppstm);
+
+    void extract_file(const std::filesystem::path& fn);
 
 private:
     LONG refcount = 0;
