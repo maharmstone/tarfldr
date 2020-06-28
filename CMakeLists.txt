@@ -12,6 +12,7 @@ set(SRC_FILES tarfldr.cpp
 	folder.cpp
 	enum.cpp
 	item.cpp
+	tarfldr.rc
 	tarfldr.def)
 
 add_library(tarfldr SHARED ${SRC_FILES})

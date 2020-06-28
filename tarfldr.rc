@@ -1,0 +1,9 @@
+#include "resource.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+STRINGTABLE
+{
+    IDS_OPEN		"&Open"
+    IDS_COPY		"&Copy"
+}

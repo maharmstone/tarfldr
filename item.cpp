@@ -1,4 +1,5 @@
 #include "tarfldr.h"
+#include "resource.h"
 #include <strsafe.h>
 #include <shlobj.h>
 #include <span>
@@ -7,14 +8,14 @@
 using namespace std;
 
 static const struct {
-    char16_t* name;
+    unsigned int res_num;
     const char* verba;
     const char16_t* verbw;
     function<HRESULT(shell_item*, CMINVOKECOMMANDINFO*)> cmd;
 } menu_items[] = {
-    { u"&Open", "open", u"open", &shell_item::open_cmd },
-    { nullptr, nullptr, nullptr, nullptr },
-    { u"&Copy", "copy", u"copy", &shell_item::copy_cmd }
+    { IDS_OPEN, "open", u"open", &shell_item::open_cmd },
+    { 0, nullptr, nullptr, nullptr },
+    { IDS_COPY, "copy", u"copy", &shell_item::copy_cmd }
 };
 
 // FIXME - others: Extract, Cut, Paste, Properties
@@ -91,11 +92,16 @@ HRESULT shell_item::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirs
         mii.cbSize = sizeof(mii);
         mii.wID = cmd;
 
-        if (mi[i].name) {
+        if (mi[i].res_num != 0) {
+            WCHAR buf[256];
+
+            if (LoadStringW(instance, mi[i].res_num, buf, sizeof(buf) / sizeof(WCHAR)) <= 0)
+                throw last_error("LoadString", GetLastError());
+
             mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
             mii.fType = MFT_STRING;
             mii.fState = i == 0 ? MFS_DEFAULT : 0;
-            mii.dwTypeData = (WCHAR*)mi[i].name; // FIXME - get from resource file
+            mii.dwTypeData = buf;
         } else {
             mii.fMask = MIIM_FTYPE | MIIM_ID;
             mii.fType = MFT_SEPARATOR;

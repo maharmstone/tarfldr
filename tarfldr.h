@@ -15,6 +15,8 @@
 
 extern const GUID CLSID_TarFolder;
 
+extern HINSTANCE instance;
+
 #define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + " stub"s).c_str()); return E_NOTIMPL;
 
 template<typename... Args>
