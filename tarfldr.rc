@@ -11,3 +11,5 @@ STRINGTABLE
     IDS_TYPE		"Type"
     IDS_MODIFIED	"Date modified"
 }
+
+IDI_TAR_ICON ICON tar.ico

@@ -8,3 +8,4 @@
 #define IDS_SIZE                       104
 #define IDS_TYPE                       105
 #define IDS_MODIFIED                   106
+#define IDI_TAR_ICON                   107

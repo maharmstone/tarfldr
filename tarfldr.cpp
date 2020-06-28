@@ -190,7 +190,7 @@ extern "C" HRESULT DllRegisterServer() {
 
         create_reg_key(HKEY_CLASSES_ROOT, PROGID);
         create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\CLSID", clsid);
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\DefaultIcon", file);
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\DefaultIcon", file + u",0"s);
 
         create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell");
         create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open");
@@ -202,7 +202,7 @@ extern "C" HRESULT DllRegisterServer() {
         create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\StorageHandler", clsid);
 
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid, PROGID);
-        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\DefaultIcon", file);
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\DefaultIcon", file + u",0"s);
 
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\Implemented Categories");
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\Implemented Categories\\" + browsable_shellext);
