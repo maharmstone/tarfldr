@@ -21,10 +21,10 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
         *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
     else if (iid == IID_IShellFolderViewCB)
         *ppv = static_cast<IShellFolderViewCB*>(this);
+    else if (iid == IID_IExplorerPaneVisibility)
+        *ppv = static_cast<IExplorerPaneVisibility*>(this);
     else {
-        if (iid == IID_IExplorerPaneVisibility)
-            debug("shell_folder::QueryInterface: unsupported interface IID_IExplorerPaneVisibility");
-        else if (iid == IID_IPersistIDList)
+        if (iid == IID_IPersistIDList)
             debug("shell_folder::QueryInterface: unsupported interface IID_IPersistIDList");
         else if (iid == IID_IFolderFilter)
             debug("shell_folder::QueryInterface: unsupported interface IID_IFolderFilter");
@@ -500,6 +500,12 @@ HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE* pfeMode) {
 
 HRESULT shell_folder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     debug("shell_folder::MessageSFVCB({}, {}, {})", uMsg, wParam, lParam);
+
+    UNIMPLEMENTED;
+}
+
+HRESULT shell_folder::GetPaneState(REFEXPLORERPANE ep, EXPLORERPANESTATE* peps) {
+    debug("shell_folder::GetPaneState({}, {})", ep, (void*)peps);
 
     UNIMPLEMENTED;
 }

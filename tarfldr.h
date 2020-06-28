@@ -88,7 +88,7 @@ private:
     void add_entry(const std::string_view& fn, int64_t size);
 };
 
-class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB {
+class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB, public IExplorerPaneVisibility {
 public:
     shell_folder() { }
     shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl);
@@ -139,6 +139,10 @@ public:
     // IShellFolderViewCB
 
     HRESULT __stdcall MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+    // IExplorerPaneVisibility
+
+    HRESULT __stdcall GetPaneState(REFEXPLORERPANE ep, EXPLORERPANESTATE* peps);
 
 private:
     tar_item& get_item_from_pidl_child(const ITEMID_CHILD* pidl);
