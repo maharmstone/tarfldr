@@ -236,7 +236,107 @@ HRESULT shell_folder::BindToStorage(PCUIDLIST_RELATIVE pidl, IBindCtx *pbc, REFI
 }
 
 HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
-    UNIMPLEMENTED; // FIXME
+    debug("shell_folder::CompareIDs({}, {}, {})", lParam, (void*)pidl1, (void*)pidl2);
+
+    if (!pidl1 || !pidl2)
+        return E_INVALIDARG;
+
+    try {
+        uint16_t col = lParam & SHCIDS_COLUMNMASK;
+        int res;
+
+        tar_item& item1 = get_item_from_pidl_child(pidl1);
+        tar_item& item2 = get_item_from_pidl_child(pidl2);
+
+        switch (col) {
+            case 0: { // name
+                auto val = item1.name.compare(item2.name);
+
+                if (val < 0)
+                    res = -1;
+                else if (val > 0)
+                    res = 1;
+                else
+                    res = 0;
+
+                break;
+            }
+
+            case 1: { // size
+                int64_t size1 = item1.dir ? 0 : item1.size;
+                int64_t size2 = item2.dir ? 0 : item2.size;
+
+                if (size1 < size2)
+                    res = -1;
+                else if (size2 < size1)
+                    res = 1;
+                else
+                    res = 0;
+
+                break;
+            }
+
+            case 2: { // type
+                SHFILEINFOW sfi;
+                u16string type1, type2;
+
+                if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item1.name).c_str(),
+                                    item1.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                                    &sfi, sizeof(sfi),
+                                    SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
+                    throw last_error("SHGetFileInfo", GetLastError());
+                }
+
+                type1 = (char16_t*)sfi.szTypeName;
+
+                if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item2.name).c_str(),
+                                    item2.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                                    &sfi, sizeof(sfi),
+                                    SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
+                    throw last_error("SHGetFileInfo", GetLastError());
+                }
+
+                type2 = (char16_t*)sfi.szTypeName;
+
+                auto val = type1.compare(type2);
+
+                if (val < 0)
+                    res = -1;
+                else if (val > 0)
+                    res = 1;
+                else
+                    res = 0;
+
+                break;
+            }
+
+            case 3: { // date
+                if (!item1.mtime.has_value() && !item2.mtime.has_value())
+                    res = 0;
+                else if (!item1.mtime.has_value())
+                    res = -1;
+                else if (!item2.mtime.has_value())
+                    res = 1;
+                else if (item1.mtime.value() < item2.mtime.value())
+                    res = -1;
+                else if (item2.mtime.value() < item1.mtime.value())
+                    res = 1;
+                else
+                    res = 0;
+
+                break;
+            }
+
+            default:
+                return E_INVALIDARG;
+        }
+
+        return MAKE_HRESULT(SEVERITY_SUCCESS, 0, res == -1 ? 0xffff : res);
+    } catch (const invalid_argument&) {
+        return E_INVALIDARG;
+    } catch (...) {
+        return E_FAIL;
+    }
 }
 
 HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) {
