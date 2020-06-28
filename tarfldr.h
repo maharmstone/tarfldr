@@ -88,7 +88,7 @@ public:
     const std::filesystem::path archive_fn;
 
 private:
-    void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime);
+    void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime, bool is_dir);
 };
 
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB, public IExplorerPaneVisibility {

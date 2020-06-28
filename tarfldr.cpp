@@ -13,7 +13,7 @@ static const array file_extensions = { u".tar" };
 LONG objs_loaded = 0;
 HINSTANCE instance = nullptr;
 
-void tar_info::add_entry(const string_view& fn, int64_t size, const optional<time_t>& mtime) {
+void tar_info::add_entry(const string_view& fn, int64_t size, const optional<time_t>& mtime, bool is_dir) {
     vector<string_view> parts;
     string_view file_part;
     tar_item* r;
@@ -44,6 +44,13 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
         } while (true);
     }
 
+    while (!parts.empty() && parts.back().empty()) {
+        parts.pop_back();
+    }
+
+    if (parts.empty())
+        return;
+
     file_part = parts.back();
     parts.pop_back();
 
@@ -71,7 +78,7 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
     // add child
 
     if (!file_part.empty())
-        r->children.emplace_back(file_part, size, false, fn, mtime);
+        r->children.emplace_back(file_part, size, is_dir, fn, mtime);
 }
 
 tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt) {
@@ -89,7 +96,8 @@ tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0
 
         while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
             add_entry(archive_entry_pathname_utf8(entry), archive_entry_size(entry),
-                      archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt});
+                      archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt},
+                      archive_entry_filetype(entry) == AE_IFDIR);
         }
     } catch (...) {
         archive_read_free(a);
