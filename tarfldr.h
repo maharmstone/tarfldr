@@ -177,6 +177,14 @@ private:
     size_t index = 0;
 };
 
+class shell_item_details {
+public:
+    shell_item_details(tar_item* item, const std::u16string_view& relative_path) : item(item), relative_path(relative_path) { }
+
+    tar_item* item;
+    std::u16string relative_path;
+};
+
 class shell_item : public IContextMenu, public IDataObject {
 public:
     shell_item(PIDLIST_ABSOLUTE root_pidl, const std::shared_ptr<tar_info>& tar,
@@ -217,11 +225,14 @@ public:
 private:
     HGLOBAL make_shell_id_list();
     HGLOBAL make_file_descriptor();
+    void populate_full_itemlist();
+    void populate_full_itemlist2(tar_item* item, const std::u16string& prefix);
 
     LONG refcount = 0;
     PIDLIST_ABSOLUTE root_pidl;
     std::shared_ptr<tar_info> tar;
     std::vector<tar_item*> itemlist;
+    std::vector<shell_item_details> full_itemlist;
     CLIPFORMAT cf_shell_id_list, cf_file_contents, cf_file_descriptor;
 };
 

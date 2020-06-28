@@ -239,6 +239,22 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
     return E_INVALIDARG;
 }
 
+void shell_item::populate_full_itemlist2(tar_item* item, const u16string& prefix) {
+    u16string name = (prefix.empty() ? u"" : (prefix + u"\\"s)) + utf8_to_utf16(item->name);
+
+    full_itemlist.emplace_back(item, name);
+
+    for (auto& c : item->children) {
+        populate_full_itemlist2(&c, name + u"\\");
+    }
+}
+
+void shell_item::populate_full_itemlist() {
+    for (auto item : itemlist) {
+        populate_full_itemlist2(item, u"");
+    }
+}
+
 HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
     char16_t format[256];
 
@@ -252,22 +268,31 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
           pformatetcIn->lindex, pformatetcIn->tymed, pmedium->tymed, pmedium->hGlobal);
 
     if (pformatetcIn->cfFormat == cf_shell_id_list && pformatetcIn->tymed & TYMED_HGLOBAL) {
+        if (full_itemlist.empty())
+            populate_full_itemlist();
+
         pmedium->tymed = TYMED_HGLOBAL;
         pmedium->hGlobal = make_shell_id_list();
         pmedium->pUnkForRelease = nullptr;
 
         return S_OK;
     } else if (pformatetcIn->cfFormat == cf_file_descriptor && pformatetcIn->tymed & TYMED_HGLOBAL) {
+        if (full_itemlist.empty())
+            populate_full_itemlist();
+
         pmedium->tymed = TYMED_HGLOBAL;
         pmedium->hGlobal = make_file_descriptor();
         pmedium->pUnkForRelease = nullptr;
 
         return S_OK;
     } else if (pformatetcIn->cfFormat == cf_file_contents && pformatetcIn->tymed & TYMED_ISTREAM) {
-        if (pformatetcIn->lindex >= itemlist.size())
+        if (full_itemlist.empty())
+            populate_full_itemlist();
+
+        if (pformatetcIn->lindex >= full_itemlist.size())
             return E_INVALIDARG;
 
-        auto tis = new tar_item_stream(tar, *itemlist[pformatetcIn->lindex]);
+        auto tis = new tar_item_stream(tar, *full_itemlist[pformatetcIn->lindex].item);
         HRESULT hr;
 
         pmedium->tymed = TYMED_ISTREAM;
@@ -293,10 +318,10 @@ HGLOBAL shell_item::make_shell_id_list() {
 
     root_pidl_size = ILGetSize(root_pidl);
 
-    size = offsetof(CIDA, aoffset) + (sizeof(UINT) * (itemlist.size() + 1)) + root_pidl_size;
+    size = offsetof(CIDA, aoffset) + (sizeof(UINT) * (full_itemlist.size() + 1)) + root_pidl_size;
 
-    for (auto item : itemlist) {
-        auto child_pidl = item->make_pidl_child();
+    for (const auto& item : full_itemlist) {
+        auto child_pidl = item.item->make_pidl_child();
 
         size += ILGetSize(child_pidl) + offsetof(ITEMIDLIST, mkid.abID);
 
@@ -309,7 +334,7 @@ HGLOBAL shell_item::make_shell_id_list() {
         return nullptr;
 
     cida = (CIDA*)GlobalLock(hg);
-    cida->cidl = itemlist.size();
+    cida->cidl = full_itemlist.size();
 
     off = &cida->aoffset[0];
     ptr = (uint8_t*)cida + offsetof(CIDA, aoffset) + ((cida->cidl + 1) * sizeof(UINT));
@@ -319,8 +344,8 @@ HGLOBAL shell_item::make_shell_id_list() {
     ptr += root_pidl_size;
     off++;
 
-    for (auto item : itemlist) {
-        auto child_pidl = item->make_pidl_child();
+    for (const auto& item : full_itemlist) {
+        auto child_pidl = item.item->make_pidl_child();
         size_t child_pidl_size = ILGetSize(child_pidl);
 
         *off = ptr - (uint8_t*)cida;
@@ -344,27 +369,25 @@ HGLOBAL shell_item::make_file_descriptor() {
     FILEGROUPDESCRIPTORW* fgd;
     FILEDESCRIPTORW* fd;
 
-    hg = GlobalAlloc(GHND | GMEM_SHARE, offsetof(FILEGROUPDESCRIPTORW, fgd) + (itemlist.size() * sizeof(FILEDESCRIPTORW)));
+    hg = GlobalAlloc(GHND | GMEM_SHARE, offsetof(FILEGROUPDESCRIPTORW, fgd) + (full_itemlist.size() * sizeof(FILEDESCRIPTORW)));
 
     if (!hg)
         return nullptr;
 
     fgd = (FILEGROUPDESCRIPTORW*)GlobalLock(hg);
-    fgd->cItems = itemlist.size();
+    fgd->cItems = full_itemlist.size();
 
     fd = &fgd->fgd[0];
 
-    for (auto item : itemlist) {
-        auto name = utf8_to_utf16(item->name);
-
-        if (name.length() >= MAX_PATH) {
+    for (const auto& item : full_itemlist) {
+        if (item.relative_path.length() >= MAX_PATH) {
             GlobalUnlock(hg);
             return nullptr;
         }
 
         fd->dwFlags = FD_ATTRIBUTES | FD_FILESIZE | FD_UNICODE; // FIXME
 
-        if (item->dir)
+        if (item.item->dir)
             fd->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
         else
             fd->dwFileAttributes = 0;
@@ -372,10 +395,10 @@ HGLOBAL shell_item::make_file_descriptor() {
         // FIXME - other attributes
         // FIXME - times
 
-        fd->nFileSizeHigh = item->size >> 32;
-        fd->nFileSizeLow = item->size & 0xffffffff;
+        fd->nFileSizeHigh = item.item->size >> 32;
+        fd->nFileSizeLow = item.item->size & 0xffffffff;
 
-        memcpy(fd->cFileName, name.c_str(), (name.length() + 1) * sizeof(char16_t));
+        memcpy(fd->cFileName, item.relative_path.c_str(), (item.relative_path.length() + 1) * sizeof(char16_t));
 
         fd++;
     }
