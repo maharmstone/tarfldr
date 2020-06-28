@@ -9,5 +9,5 @@ STRINGTABLE
     IDS_NAME		"Name"
     IDS_SIZE		"Size"
     IDS_TYPE		"Type"
-    IDS_MODIFIED	"Modified"
+    IDS_MODIFIED	"Date modified"
 }
