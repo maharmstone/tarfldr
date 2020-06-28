@@ -403,15 +403,32 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
 
                 return S_OK;
 
+            case PID_STG_STORAGETYPE: {
+                SHFILEINFOW sfi;
+
+                if (!SHGetFileInfoW((LPCWSTR)utf8_to_utf16(item.name).c_str(),
+                                    item.dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL,
+                                    &sfi, sizeof(sfi),
+                                    SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME)) {
+                    throw last_error("SHGetFileInfo", GetLastError());
+                }
+
+                pv->vt = VT_BSTR;
+                pv->bstrVal = SysAllocString(sfi.szTypeName);
+
+                return S_OK;
+            }
+
             default:
                 return E_NOTIMPL;
         }
 
         // FIXME - PID_STG_NAME (VT_LPWSTR)
-        // FIXME - PID_STG_STORAGETYPE (?)
         // FIXME - PID_STG_WRITETIME (VT_FILETIME)
     } catch (const invalid_argument&) {
         return E_INVALIDARG;
+    } catch (...) {
+        return E_FAIL;
     }
 }
 
