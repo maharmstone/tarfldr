@@ -394,6 +394,12 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
         tar_item& item = get_item_from_pidl_child(pidl);
 
         switch (pscid->pid) {
+            case PID_STG_NAME:
+                pv->vt = VT_BSTR;
+                pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.name).c_str());
+
+                return S_OK;
+
             case PID_STG_SIZE:
                 if (item.dir)
                     return E_INVALIDARG;
@@ -423,7 +429,6 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
                 return E_NOTIMPL;
         }
 
-        // FIXME - PID_STG_NAME (VT_LPWSTR)
         // FIXME - PID_STG_WRITETIME (VT_FILETIME)
     } catch (const invalid_argument&) {
         return E_INVALIDARG;
