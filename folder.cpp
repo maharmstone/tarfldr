@@ -357,6 +357,33 @@ static int mode_compare(const tar_item& item1, const tar_item& item2) {
         return 0;
 }
 
+tar_item& shell_folder::get_item_from_relative_pidl(PCUIDLIST_RELATIVE pidl) {
+    tar_item* r = root;
+
+    while (pidl->mkid.cb != 0) {
+        bool found = false;
+
+        if (pidl->mkid.cb < offsetof(ITEMIDLIST, mkid.abID))
+            throw invalid_argument("");
+
+        string_view sv{(char*)pidl->mkid.abID, pidl->mkid.cb - offsetof(ITEMIDLIST, mkid.abID)};
+
+        for (auto& it : r->children) {
+            if (it.name == sv) {
+                r = &it;
+                found = true;
+                pidl = (ITEMIDLIST*)((uint8_t*)pidl + pidl->mkid.cb);
+                break;
+            }
+        }
+
+        if (!found)
+            throw invalid_argument("");
+    }
+
+    return *r;
+}
+
 HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2) {
     debug("shell_folder::CompareIDs({}, {}, {})", lParam, (void*)pidl1, (void*)pidl2);
 
@@ -375,8 +402,8 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
         if (!h[col].compare_func)
             res = 0;
         else {
-            tar_item& item1 = get_item_from_pidl_child(pidl1);
-            tar_item& item2 = get_item_from_pidl_child(pidl2);
+            tar_item& item1 = get_item_from_relative_pidl(pidl1);
+            tar_item& item2 = get_item_from_relative_pidl(pidl2);
 
             res = h[col].compare_func(item1, item2);
         }

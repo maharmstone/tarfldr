@@ -149,6 +149,7 @@ public:
 
 private:
     tar_item& get_item_from_pidl_child(const ITEMID_CHILD* pidl);
+    tar_item& get_item_from_relative_pidl(PCUIDLIST_RELATIVE pidl);
 
     LONG refcount = 0;
     FOLDER_ENUM_MODE folder_enum_mode = FEM_VIEWRESULT;
