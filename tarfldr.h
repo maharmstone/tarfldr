@@ -342,6 +342,21 @@ private:
     std::string buf;
 };
 
+class shell_context_menu;
+
+class shell_context_menu_item {
+public:
+    shell_context_menu_item(unsigned int res_num, const std::string_view& verba, const std::u16string_view& verbw,
+                            const std::function<void(shell_context_menu*, CMINVOKECOMMANDINFO*)>& cmd) :
+                            res_num(res_num), verba(verba), verbw(verbw), cmd(cmd) {
+    }
+
+    unsigned int res_num;
+    std::string verba;
+    std::u16string verbw;
+    std::function<void(shell_context_menu*, CMINVOKECOMMANDINFO*)> cmd;
+};
+
 class shell_context_menu : public IContextMenu, public IShellExtInit {
 public:
     // IUnknown
@@ -360,11 +375,12 @@ public:
 
     HRESULT __stdcall Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID);
 
-private:
-    void extract_all(HWND hwnd);
+    void extract_all(CMINVOKECOMMANDINFO* pici);
 
+private:
     LONG refcount = 0;
     std::vector<std::filesystem::path> files;
+    std::vector<shell_context_menu_item> items;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
