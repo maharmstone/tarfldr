@@ -381,7 +381,7 @@ public:
 
 private:
     LONG refcount = 0;
-    std::vector<std::filesystem::path> files;
+    std::vector<std::vector<uint8_t>> files;
     std::vector<shell_context_menu_item> items;
 };
 

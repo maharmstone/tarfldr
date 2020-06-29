@@ -4,8 +4,8 @@
 
 using namespace std;
 
-#define VERB_EXTRACTA "extract"
-#define VERB_EXTRACTW u"extract"
+#define HIDA_GetPIDLFolder(pida) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[0])
+#define HIDA_GetPIDLItem(pida, i) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[i+1])
 
 HRESULT shell_context_menu::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IContextMenu)
@@ -105,8 +105,6 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
 
         ILFree(dest_pidl);
 
-        MessageBoxW(pici->hwnd, L"", L"FIXME", 0); // FIXME
-
         {
             IFileOperation* fo;
 
@@ -117,10 +115,36 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
             ifo.reset(fo);
         }
 
+        vector<shell_item> shell_items;
+
         for (const auto& file : files) {
-            // FIXME - if one of ours, create tar_info
-            // FIXME - create shell_item for children of root
-            // FIXME - call IFileOperation::CopyItems, casting shell_item to IDataObject*
+            vector<tar_item*> itemlist;
+            WCHAR path[MAX_PATH];
+
+            if (!SHGetPathFromIDListW((ITEMIDLIST*)file.data(), path))
+                throw runtime_error("SHGetPathFromIDList failed");
+
+            // FIXME - ignore if not one of our files
+
+            shared_ptr<tar_info> ti{new tar_info(path)};
+
+            for (auto& item : ti->root.children) {
+                itemlist.push_back(&item);
+            }
+
+            shell_items.emplace_back((ITEMIDLIST*)file.data(), ti, itemlist, &ti->root);
+        }
+
+        for (auto& si : shell_items) {
+            IUnknown* unk;
+
+            hr = si.QueryInterface(IID_IUnknown, (void**)&unk);
+            if (FAILED(hr))
+                throw formatted_error("shell_item::QueryInterface returned {:08x}.", (uint32_t)hr);
+
+            hr = ifo->CopyItems(unk, dest.get());
+            if (FAILED(hr))
+                throw formatted_error("IFileOperation::CopyItems returned {:08x}.", (uint32_t)hr);
         }
 
         hr = ifo->PerformOperations();
@@ -198,10 +222,11 @@ HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* p
 }
 
 HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID) {
-    FORMATETC format = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+    CLIPFORMAT cf = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
+    FORMATETC format = { cf, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
     HRESULT hr;
     UINT num_files;
-    HDROP hdrop;
+    CIDA* cida;
     STGMEDIUM stgm;
     WCHAR path[MAX_PATH];
 
@@ -214,18 +239,19 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     if (FAILED(hr))
         return hr;
 
-    hdrop = (HDROP)GlobalLock(stgm.hGlobal);
+    cida = (CIDA*)GlobalLock(stgm.hGlobal);
 
-    if (!hdrop) {
+    if (!cida) {
         ReleaseStgMedium(&stgm);
         return E_INVALIDARG;
     }
 
-    num_files = DragQueryFileW((HDROP)stgm.hGlobal, 0xFFFFFFFF, nullptr, 0);
+    for (unsigned int i = 0; i < cida->cidl; i++) {
+        auto pidl = ILCombine(HIDA_GetPIDLFolder(cida), HIDA_GetPIDLItem(cida, i));
 
-    for (unsigned int i = 0; i < num_files; i++) {
-        if (DragQueryFileW((HDROP)stgm.hGlobal, i, path, sizeof(path) / sizeof(WCHAR)))
-            files.emplace_back(path);
+        files.emplace_back((uint8_t*)pidl, (uint8_t*)pidl + ILGetSize(pidl));
+
+        ILFree(pidl);
     }
 
     GlobalUnlock(stgm.hGlobal);
