@@ -96,7 +96,7 @@ HRESULT shell_item::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirs
             WCHAR buf[256];
 
             if (LoadStringW(instance, mi[i].res_num, buf, sizeof(buf) / sizeof(WCHAR)) <= 0)
-                throw last_error("LoadString", GetLastError());
+                return E_FAIL;
 
             mii.fMask = MIIM_FTYPE | MIIM_STATE | MIIM_ID | MIIM_STRING;
             mii.fType = MFT_STRING;
