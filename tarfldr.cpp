@@ -71,7 +71,7 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
         }
 
         if (!found) {
-            r->children.emplace_back(p, size, true, "", nullopt, "", "", 0);
+            r->children.emplace_back(p, size, true, "", nullopt, "", "", 0, r);
             r = &r->children.back();
         }
     }
@@ -80,11 +80,11 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
 
     if (!file_part.empty()) {
         r->children.emplace_back(file_part, size, is_dir, fn, mtime, user ? user : "",
-                                 group ? group : "", mode);
+                                 group ? group : "", mode, r);
     }
 }
 
-tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0) {
+tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0, nullptr) {
     struct archive_entry* entry;
     struct archive* a = archive_read_new();
 

@@ -61,14 +61,15 @@ public:
     tar_item(const std::string_view& name, int64_t size, bool dir,
              const std::string_view& full_path, const std::optional<time_t>& mtime,
              const std::string_view& user, const std::string_view& group,
-             mode_t mode) :
-        name(name), size(size), dir(dir), full_path(full_path), mtime(mtime), user(user), group(group), mode(mode) { }
+             mode_t mode, tar_item* parent) :
+        name(name), size(size), dir(dir), full_path(full_path), mtime(mtime), user(user), group(group), mode(mode), parent(parent) { }
 
     ITEMID_CHILD* make_pidl_child() const;
     void find_child(const std::u16string_view& name, tar_item** ret);
     SFGAOF get_atts() const;
 
     std::string name, full_path, user, group;
+    tar_item* parent;
     int64_t size;
     bool dir;
     std::vector<tar_item> children;

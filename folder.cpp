@@ -526,12 +526,29 @@ HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRR
 
     try {
         const auto& item = get_item_from_pidl_child(pidl);
+        u16string ret;
 
-        auto u16name = utf8_to_utf16(item.name);
+        // FIXME - are we supposed to hide extensions here?
+
+        if (uFlags & SHGDN_FORPARSING && !(uFlags & SHGDN_INFOLDER)) {
+            tar_item* r;
+
+            ret = utf8_to_utf16(item.name);
+
+            r = item.parent;
+
+            while (r) {
+                ret = utf8_to_utf16(r->name) + u"\\" + ret;
+                r = r->parent;
+            }
+
+            ret = tar->archive_fn.u16string() + ret;
+        } else
+            ret = utf8_to_utf16(item.name);
 
         pName->uType = STRRET_WSTR;
-        pName->pOleStr = (WCHAR*)CoTaskMemAlloc((u16name.length() + 1) * sizeof(char16_t));
-        memcpy(pName->pOleStr, u16name.c_str(), (u16name.length() + 1) * sizeof(char16_t));
+        pName->pOleStr = (WCHAR*)CoTaskMemAlloc((ret.length() + 1) * sizeof(char16_t));
+        memcpy(pName->pOleStr, ret.c_str(), (ret.length() + 1) * sizeof(char16_t));
 
         return S_OK;
     } catch (const invalid_argument&) {
