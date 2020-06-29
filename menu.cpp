@@ -67,36 +67,68 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
 }
 
 void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
-    BROWSEINFOW bi;
-    WCHAR msg[256], buf[MAX_PATH], path[MAX_PATH];
+    try {
+        HRESULT hr;
+        BROWSEINFOW bi;
+        WCHAR msg[256], buf[MAX_PATH];
+        com_object<IShellItem> dest;
+        com_object<IFileOperation> ifo;
 
-    // FIXME - allow extracting to arbitrary PIDL, not just FS?
+        // FIXME - can we preserve LXSS metadata when extracting?
 
-    if (LoadStringW(instance, IDS_EXTRACT_TEXT, msg, sizeof(msg) / sizeof(WCHAR)) <= 0)
-        return;
+        if (LoadStringW(instance, IDS_EXTRACT_TEXT, msg, sizeof(msg) / sizeof(WCHAR)) <= 0)
+            throw last_error("LoadString", GetLastError());
 
-    bi.hwndOwner = pici->hwnd;
-    bi.pidlRoot = nullptr;
-    bi.pszDisplayName = buf;
-    bi.lpszTitle = msg;
-    bi.ulFlags = BIF_RETURNONLYFSDIRS;
-    bi.lpfn = nullptr;
+        bi.hwndOwner = pici->hwnd;
+        bi.pidlRoot = nullptr;
+        bi.pszDisplayName = buf;
+        bi.lpszTitle = msg;
+        bi.ulFlags = 0;
+        bi.lpfn = nullptr;
 
-    auto dest_pidl = SHBrowseForFolderW(&bi);
+        auto dest_pidl = SHBrowseForFolderW(&bi);
 
-    if (!dest_pidl)
-        return;
+        if (!dest_pidl)
+            return;
 
-    if (!SHGetPathFromIDListW(dest_pidl, path)) {
-        debug("SHGetPathFromIDListW failed");
+        {
+            IShellItem* si;
+
+            hr = SHCreateItemFromIDList(dest_pidl, IID_IShellItem, (void**)&si);
+            if (FAILED(hr)) {
+                ILFree(dest_pidl);
+                throw formatted_error("SHCreateItemFromIDList returned {:08x}.", (uint32_t)hr);
+            }
+
+            dest.reset(si);
+        }
+
         ILFree(dest_pidl);
-        return;
+
+        MessageBoxW(pici->hwnd, L"", L"FIXME", 0); // FIXME
+
+        {
+            IFileOperation* fo;
+
+            hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_IFileOperation, (void**)&fo);
+            if (FAILED(hr))
+                throw formatted_error("CoCreateInstance returned {:08x} for CLSID_FileOperation.", (uint32_t)hr);
+
+            ifo.reset(fo);
+        }
+
+        for (const auto& file : files) {
+            // FIXME - if one of ours, create tar_info
+            // FIXME - create shell_item for children of root
+            // FIXME - call IFileOperation::CopyItems, casting shell_item to IDataObject*
+        }
+
+        hr = ifo->PerformOperations();
+        if (FAILED(hr))
+            throw formatted_error("IFileOperation::PerformOperations returned {:08x}.", (uint32_t)hr);
+    } catch (const exception& e) {
+        MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
     }
-
-    ILFree(dest_pidl);
-
-    // FIXME - do extraction
-    MessageBoxW(pici->hwnd, path, L"FIXME", 0); // FIXME
 }
 
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
