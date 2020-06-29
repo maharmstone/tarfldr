@@ -103,8 +103,23 @@ HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* p
     debug("shell_context_menu::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
           (void*)pReserved, (void*)pszName, cchMax);
 
-    if (idCmd >= items.size())
-        return E_INVALIDARG;
+    if (!IS_INTRESOURCE(idCmd)) {
+        bool found = false;
+
+        for (unsigned int i = 0; i < items.size(); i++) {
+            if (items[i].verba == (char*)idCmd) {
+                idCmd = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            return E_INVALIDARG;
+    } else {
+        if (idCmd >= items.size())
+            return E_INVALIDARG;
+    }
 
     switch (uType) {
         case GCS_VALIDATEA:
