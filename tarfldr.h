@@ -89,6 +89,26 @@ private:
                    const char* user, const char* group, mode_t mode);
 };
 
+class factory : public IClassFactory {
+public:
+    factory();
+    virtual ~factory();
+
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // IClassFactory
+
+    HRESULT __stdcall CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv);
+    HRESULT __stdcall LockServer(BOOL bLock);
+
+private:
+    LONG refcount = 0;
+};
+
 class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB, public IExplorerPaneVisibility {
 public:
     shell_folder() { }

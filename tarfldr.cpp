@@ -474,70 +474,60 @@ HRESULT tar_item_stream::Clone(IStream** ppstm) {
     UNIMPLEMENTED; // FIXME
 }
 
-class factory : public IClassFactory {
-public:
-    factory() {
-        InterlockedIncrement(&objs_loaded);
-    }
+factory::factory() {
+    InterlockedIncrement(&objs_loaded);
+}
 
-    virtual ~factory() {
-        InterlockedDecrement(&objs_loaded);
-    }
+factory::~factory() {
+    InterlockedDecrement(&objs_loaded);
+}
 
-    // IUnknown
-
-    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
-        if (iid == IID_IUnknown || iid == IID_IClassFactory)
-            *ppv = static_cast<IClassFactory*>(this);
-        else {
-            *ppv = nullptr;
-            return E_NOINTERFACE;
-        }
-
-        reinterpret_cast<IUnknown*>(*ppv)->AddRef();
-
-        return S_OK;
-    }
-
-    ULONG __stdcall AddRef() {
-        return InterlockedIncrement(&refcount);
-    }
-
-    ULONG __stdcall Release() {
-        LONG rc = InterlockedDecrement(&refcount);
-
-        if (rc == 0)
-            delete this;
-
-        return rc;
-    }
-
-    // IClassFactory
-
-    HRESULT __stdcall CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
-        if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2 ||
-            iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3 ||
-            iid == IID_IObjectWithFolderEnumMode || iid == IID_IShellFolderViewCB) {
-            shell_folder* sf = new shell_folder;
-            if (!sf)
-                return E_OUTOFMEMORY;
-
-            return sf->QueryInterface(iid, ppv);
-        }
-
-        debug("factory::CreateInstance: unsupported interface {}", iid);
-
+HRESULT factory::QueryInterface(REFIID iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_IClassFactory)
+        *ppv = static_cast<IClassFactory*>(this);
+    else {
         *ppv = nullptr;
         return E_NOINTERFACE;
     }
 
-    HRESULT __stdcall LockServer(BOOL bLock) {
-        return E_NOTIMPL;
+    reinterpret_cast<IUnknown*>(*ppv)->AddRef();
+
+    return S_OK;
+}
+
+ULONG factory::AddRef() {
+    return InterlockedIncrement(&refcount);
+}
+
+ULONG factory::Release() {
+    LONG rc = InterlockedDecrement(&refcount);
+
+    if (rc == 0)
+        delete this;
+
+    return rc;
+}
+
+HRESULT factory::CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
+    if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2 ||
+        iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3 ||
+        iid == IID_IObjectWithFolderEnumMode || iid == IID_IShellFolderViewCB) {
+        shell_folder* sf = new shell_folder;
+        if (!sf)
+            return E_OUTOFMEMORY;
+
+        return sf->QueryInterface(iid, ppv);
     }
 
-private:
-    LONG refcount = 0;
-};
+    debug("factory::CreateInstance: unsupported interface {}", iid);
+
+    *ppv = nullptr;
+    return E_NOINTERFACE;
+}
+
+HRESULT factory::LockServer(BOOL bLock) {
+    return E_NOTIMPL;
+}
 
 extern "C" STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
     if (rclsid == CLSID_TarFolder) {
