@@ -19,7 +19,7 @@ extern const GUID CLSID_TarFolder;
 
 extern HINSTANCE instance;
 
-#define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + " stub"s).c_str()); return E_NOTIMPL;
+#define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + std::string(" stub")).c_str()); return E_NOTIMPL;
 
 template<typename... Args>
 static void debug(const std::string_view& s, Args&&... args) { // FIXME - only if compiled in Debug mode
@@ -91,7 +91,7 @@ private:
 
 class factory : public IClassFactory {
 public:
-    factory();
+    factory(const CLSID& clsid);
     virtual ~factory();
 
     // IUnknown
@@ -106,6 +106,7 @@ public:
     HRESULT __stdcall LockServer(BOOL bLock);
 
 private:
+    CLSID clsid;
     LONG refcount = 0;
 };
 
@@ -339,6 +340,28 @@ private:
     struct archive* a;
     tar_item& item;
     std::string buf;
+};
+
+class shell_context_menu : public IContextMenu, public IShellExtInit {
+public:
+    // IUnknown
+
+    HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+    ULONG __stdcall AddRef();
+    ULONG __stdcall Release();
+
+    // IContextMenu
+
+    HRESULT __stdcall QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags);
+    HRESULT __stdcall InvokeCommand(CMINVOKECOMMANDINFO* pici);
+    HRESULT __stdcall GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved, CHAR* pszName, UINT cchMax);
+
+    // IShellExtInit
+
+    HRESULT __stdcall Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID);
+
+private:
+    LONG refcount = 0;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {

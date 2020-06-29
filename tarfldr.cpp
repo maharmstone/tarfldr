@@ -3,6 +3,7 @@
 using namespace std;
 
 const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
+const GUID CLSID_TarContextMenu = { 0xa23f73ab, 0x6c42, 0x4689, {0xa6, 0xab, 0x30, 0x13, 0x0c, 0xe7, 0x2a, 0x90 } };
 
 static const array file_extensions = { u".tar" };
 
@@ -218,6 +219,15 @@ extern "C" HRESULT DllRegisterServer() {
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ShellFolder");
         set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ShellFolder", u"Attributes", SFGAO_FOLDER);
 
+        auto clsid_menu = utf8_to_utf16(fmt::format("{}", CLSID_TarContextMenu));
+
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu, PROGID);
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu + u"\\InProcServer32", file);
+        set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu + u"\\InProcServer32", u"ThreadingModel", u"Apartment");
+
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\ContextMenuHandlers");
+        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\ContextMenuHandlers\\tarfldr", clsid_menu);
+
         return S_OK;
     } catch (const exception& e) {
         MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
@@ -235,13 +245,12 @@ static void delete_reg_tree(HKEY hkey, const u16string& subkey) {
 
 extern "C" HRESULT DllUnregisterServer() {
     try {
-        auto clsid = utf8_to_utf16(fmt::format("{}", CLSID_TarFolder));
-
         for (const auto& ext : file_extensions) {
             delete_reg_tree(HKEY_CLASSES_ROOT, ext);
         }
 
-        delete_reg_tree(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid);
+        delete_reg_tree(HKEY_CLASSES_ROOT, u"CLSID\\" + utf8_to_utf16(fmt::format("{}", CLSID_TarFolder)));
+        delete_reg_tree(HKEY_CLASSES_ROOT, u"CLSID\\" + utf8_to_utf16(fmt::format("{}", CLSID_TarContextMenu)));
         delete_reg_tree(HKEY_CLASSES_ROOT, PROGID);
 
         return S_OK;
@@ -474,7 +483,7 @@ HRESULT tar_item_stream::Clone(IStream** ppstm) {
     UNIMPLEMENTED; // FIXME
 }
 
-factory::factory() {
+factory::factory(const CLSID& clsid) : clsid(clsid) {
     InterlockedIncrement(&objs_loaded);
 }
 
@@ -509,17 +518,27 @@ ULONG factory::Release() {
 }
 
 HRESULT factory::CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** ppv) {
-    if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2 ||
-        iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3 ||
-        iid == IID_IObjectWithFolderEnumMode || iid == IID_IShellFolderViewCB) {
-        shell_folder* sf = new shell_folder;
-        if (!sf)
-            return E_OUTOFMEMORY;
+    if (clsid == CLSID_TarFolder) {
+        if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2 ||
+            iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3 ||
+            iid == IID_IObjectWithFolderEnumMode || iid == IID_IShellFolderViewCB) {
+            auto sf = new shell_folder;
+            if (!sf)
+                return E_OUTOFMEMORY;
 
-        return sf->QueryInterface(iid, ppv);
+            return sf->QueryInterface(iid, ppv);
+        }
+    } else if (clsid == CLSID_TarContextMenu) {
+        if (iid == IID_IUnknown || iid == IID_IContextMenu || iid == IID_IShellExtInit) {
+            auto scm = new shell_context_menu;
+            if (!scm)
+                return E_OUTOFMEMORY;
+
+            return scm->QueryInterface(iid, ppv);
+        }
     }
 
-    debug("factory::CreateInstance: unsupported interface {}", iid);
+    debug("factory::CreateInstance: unsupported interface {} on {}", iid, clsid);
 
     *ppv = nullptr;
     return E_NOINTERFACE;
@@ -530,8 +549,8 @@ HRESULT factory::LockServer(BOOL bLock) {
 }
 
 extern "C" STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
-    if (rclsid == CLSID_TarFolder) {
-        factory* fact = new factory;
+    if (rclsid == CLSID_TarFolder || rclsid == CLSID_TarContextMenu) {
+        factory* fact = new factory(rclsid);
         if (!fact)
             return E_OUTOFMEMORY;
         else
