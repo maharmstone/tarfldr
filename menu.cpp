@@ -45,5 +45,38 @@ HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* p
 }
 
 HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID) {
-    UNIMPLEMENTED; // FIXME
+    FORMATETC format = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+    HRESULT hr;
+    UINT num_files;
+    HDROP hdrop;
+    STGMEDIUM stgm;
+    WCHAR path[MAX_PATH];
+
+    if (pidlFolder || !pdtobj)
+        return E_INVALIDARG;
+
+    stgm.tymed = TYMED_HGLOBAL;
+
+    hr = pdtobj->GetData(&format, &stgm);
+    if (FAILED(hr))
+        return hr;
+
+    hdrop = (HDROP)GlobalLock(stgm.hGlobal);
+
+    if (!hdrop) {
+        ReleaseStgMedium(&stgm);
+        return E_INVALIDARG;
+    }
+
+    num_files = DragQueryFileW((HDROP)stgm.hGlobal, 0xFFFFFFFF, nullptr, 0);
+
+    for (unsigned int i = 0; i < num_files; i++) {
+        if (DragQueryFileW((HDROP)stgm.hGlobal, i, path, sizeof(path) / sizeof(WCHAR)))
+            files.emplace_back(path);
+    }
+
+    GlobalUnlock(stgm.hGlobal);
+    ReleaseStgMedium(&stgm);
+
+    return S_OK;
 }

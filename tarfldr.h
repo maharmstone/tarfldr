@@ -362,6 +362,7 @@ public:
 
 private:
     LONG refcount = 0;
+    std::vector<std::filesystem::path> files;
 };
 
 __inline std::u16string utf8_to_utf16(const std::string_view& s) {
