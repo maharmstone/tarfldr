@@ -275,6 +275,39 @@ ITEMID_CHILD* tar_item::make_pidl_child() const {
     return item;
 }
 
+ITEMID_CHILD* tar_item::make_relative_pidl(tar_item* root) const {
+    size_t size = offsetof(ITEMIDLIST, mkid.abID);
+
+    const tar_item* p = this;
+
+    while (p && p != root) {
+        size += offsetof(ITEMIDLIST, mkid.abID) + p->name.length();
+        p = p->parent;
+    }
+
+    auto item = (ITEMIDLIST*)CoTaskMemAlloc(size);
+
+    if (!item)
+        throw bad_alloc();
+
+    auto ptr = (ITEMIDLIST*)((uint8_t*)item + size - offsetof(ITEMIDLIST, mkid.abID));
+
+    ptr->mkid.cb = 0;
+
+    p = this;
+
+    while (p && p != root) {
+        ptr = (ITEMIDLIST*)((uint8_t*)ptr - offsetof(ITEMIDLIST, mkid.abID) - p->name.length());
+
+        ptr->mkid.cb = offsetof(ITEMIDLIST, mkid.abID) + p->name.length();
+        memcpy(ptr->mkid.abID, p->name.data(), p->name.length());
+
+        p = p->parent;
+    }
+
+    return item;
+}
+
 void tar_item::find_child(const std::u16string_view& name, tar_item** ret) {
     u16string n{name};
 

@@ -65,6 +65,7 @@ public:
         name(name), size(size), dir(dir), full_path(full_path), mtime(mtime), user(user), group(group), mode(mode), parent(parent) { }
 
     ITEMID_CHILD* make_pidl_child() const;
+    ITEMID_CHILD* make_relative_pidl(tar_item* root) const;
     void find_child(const std::u16string_view& name, tar_item** ret);
     SFGAOF get_atts() const;
 
@@ -226,7 +227,7 @@ public:
 class shell_item : public IContextMenu, public IDataObject {
 public:
     shell_item(PIDLIST_ABSOLUTE root_pidl, const std::shared_ptr<tar_info>& tar,
-               const std::vector<tar_item*>& itemlist);
+               const std::vector<tar_item*>& itemlist, tar_item* root);
     virtual ~shell_item();
 
     // IUnknown
@@ -272,6 +273,7 @@ private:
     std::vector<tar_item*> itemlist;
     std::vector<shell_item_details> full_itemlist;
     CLIPFORMAT cf_shell_id_list, cf_file_contents, cf_file_descriptor;
+    tar_item* root;
 };
 
 struct data_format {

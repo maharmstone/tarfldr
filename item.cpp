@@ -21,7 +21,7 @@ static const struct {
 // FIXME - others: Extract, Cut, Paste, Properties
 
 shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
-                       const vector<tar_item*>& itemlist) : tar(tar), itemlist(itemlist) {
+                       const vector<tar_item*>& itemlist, tar_item* root) : tar(tar), itemlist(itemlist), root(root) {
     this->root_pidl = ILCloneFull(root_pidl);
     cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
     cf_file_contents = RegisterClipboardFormatW(CFSTR_FILECONTENTS);
@@ -340,9 +340,9 @@ HGLOBAL shell_item::make_shell_id_list() {
     size = offsetof(CIDA, aoffset) + (sizeof(UINT) * (full_itemlist.size() + 1)) + root_pidl_size;
 
     for (const auto& item : full_itemlist) {
-        auto child_pidl = item.item->make_pidl_child();
+        auto child_pidl = item.item->make_relative_pidl(root);
 
-        size += ILGetSize(child_pidl) + offsetof(ITEMIDLIST, mkid.abID);
+        size += ILGetSize(child_pidl);
 
         ILFree(child_pidl);
     }
@@ -364,17 +364,15 @@ HGLOBAL shell_item::make_shell_id_list() {
     off++;
 
     for (const auto& item : full_itemlist) {
-        auto child_pidl = item.item->make_pidl_child();
+        auto child_pidl = item.item->make_relative_pidl(root);
         size_t child_pidl_size = ILGetSize(child_pidl);
 
         *off = ptr - (uint8_t*)cida;
         memcpy(ptr, child_pidl, child_pidl_size);
 
-        ((ITEMIDLIST*)(ptr + child_pidl_size))->mkid.cb = 0;
-
         ILFree(child_pidl);
 
-        ptr += child_pidl_size + offsetof(ITEMIDLIST, mkid.abID);
+        ptr += child_pidl_size;
         off++;
     }
 
