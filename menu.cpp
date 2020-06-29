@@ -67,7 +67,36 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
 }
 
 void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
-    MessageBoxA(pici->hwnd, "FIXME - extract all", 0, 0); // FIXME
+    BROWSEINFOW bi;
+    WCHAR msg[256], buf[MAX_PATH], path[MAX_PATH];
+
+    // FIXME - allow extracting to arbitrary PIDL, not just FS?
+
+    if (LoadStringW(instance, IDS_EXTRACT_TEXT, msg, sizeof(msg) / sizeof(WCHAR)) <= 0)
+        return;
+
+    bi.hwndOwner = pici->hwnd;
+    bi.pidlRoot = nullptr;
+    bi.pszDisplayName = buf;
+    bi.lpszTitle = msg;
+    bi.ulFlags = BIF_RETURNONLYFSDIRS;
+    bi.lpfn = nullptr;
+
+    auto dest_pidl = SHBrowseForFolderW(&bi);
+
+    if (!dest_pidl)
+        return;
+
+    if (!SHGetPathFromIDListW(dest_pidl, path)) {
+        debug("SHGetPathFromIDListW failed");
+        ILFree(dest_pidl);
+        return;
+    }
+
+    ILFree(dest_pidl);
+
+    // FIXME - do extraction
+    MessageBoxW(pici->hwnd, path, L"FIXME", 0); // FIXME
 }
 
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
