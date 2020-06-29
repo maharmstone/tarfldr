@@ -361,6 +361,8 @@ public:
     HRESULT __stdcall Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID);
 
 private:
+    void extract_all(HWND hwnd);
+
     LONG refcount = 0;
     std::vector<std::filesystem::path> files;
 };

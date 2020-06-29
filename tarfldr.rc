@@ -13,6 +13,7 @@ STRINGTABLE
     IDS_USER	    "User"
     IDS_GROUP	    "Group"
     IDS_MODE	    "Mode"
+    IDS_EXTRACT_ALL "E&xtract All..."
 }
 
 IDI_TAR_ICON ICON tar.ico

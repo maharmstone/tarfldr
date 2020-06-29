@@ -12,3 +12,4 @@
 #define IDS_USER                       108
 #define IDS_GROUP                      109
 #define IDS_MODE                       110
+#define IDS_EXTRACT_ALL                111
