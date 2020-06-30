@@ -410,6 +410,9 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
     int64_t offset;
     const void* readbuf;
 
+    if (item.dir)
+        return E_NOTIMPL;
+
     *pcbRead = 0;
 
     if (!buf.empty()) {
@@ -509,7 +512,38 @@ HRESULT tar_item_stream::UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER c
 }
 
 HRESULT tar_item_stream::Stat(STATSTG* pstatstg, DWORD grfStatFlag) {
-    UNIMPLEMENTED; // FIXME
+    debug("tar_item_stream::Stat({}, {:#x})", (void*)pstatstg, grfStatFlag);
+
+    if (!(grfStatFlag & STATFLAG_NONAME)) {
+        auto name = utf8_to_utf16(item.name);
+
+        tar_item* p = item.parent;
+        while (p) {
+            if (!p->name.empty())
+                name = utf8_to_utf16(p->name) + u"\\" + name;
+
+            p = p->parent;
+        }
+
+        pstatstg->pwcsName = (WCHAR*)CoTaskMemAlloc((name.length() + 1) * sizeof(char16_t));
+        memcpy(pstatstg->pwcsName, name.c_str(), (name.length() + 1) * sizeof(char16_t));
+    } else
+        pstatstg->pwcsName = nullptr;
+
+    pstatstg->type = STGTY_STREAM;
+    pstatstg->cbSize.QuadPart = item.size;
+    pstatstg->mtime.dwLowDateTime = 0; // FIXME
+    pstatstg->mtime.dwHighDateTime = 0; // FIXME
+    pstatstg->ctime.dwLowDateTime = 0;
+    pstatstg->ctime.dwHighDateTime = 0;
+    pstatstg->atime.dwLowDateTime = 0;
+    pstatstg->atime.dwHighDateTime = 0;
+    pstatstg->grfMode = STGM_READ;
+    pstatstg->grfLocksSupported = LOCK_WRITE;
+    pstatstg->clsid = CLSID_NULL;
+    pstatstg->grfStateBits = 0;
+
+    return S_OK;
 }
 
 HRESULT tar_item_stream::Clone(IStream** ppstm) {

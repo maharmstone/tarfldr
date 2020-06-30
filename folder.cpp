@@ -264,9 +264,6 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
             sh = (SHITEMID*)((uint8_t*)sh + sh->cb);
         }
 
-        if (item->dir)
-            return E_NOINTERFACE;
-
         auto tis = new tar_item_stream(tar, *item);
 
         return tis->QueryInterface(riid, ppv);
