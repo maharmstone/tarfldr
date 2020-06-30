@@ -99,10 +99,12 @@ tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0
             throw runtime_error(archive_error_string(a));
 
         while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-            add_entry(archive_entry_pathname_utf8(entry), archive_entry_size(entry),
-                      archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt},
-                      archive_entry_filetype(entry) == AE_IFDIR, archive_entry_uname_utf8(entry),
-                      archive_entry_gname_utf8(entry), archive_entry_mode(entry));
+            if (archive_entry_pathname_utf8(entry)) {
+                add_entry(archive_entry_pathname_utf8(entry), archive_entry_size(entry),
+                        archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt},
+                        archive_entry_filetype(entry) == AE_IFDIR, archive_entry_uname_utf8(entry),
+                        archive_entry_gname_utf8(entry), archive_entry_mode(entry));
+            }
         }
     } catch (...) {
         archive_read_free(a);
