@@ -239,6 +239,37 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
         ILFree(new_pidl);
 
         return sf->QueryInterface(riid, ppv);
+    } else if (riid == IID_IStream) {
+        if (!pidl)
+            return E_NOINTERFACE;
+
+        tar_item* item = root;
+        const SHITEMID* sh = &pidl->mkid;
+
+        while (sh->cb != 0) {
+            string_view name{(char*)sh->abID, sh->cb - offsetof(SHITEMID, abID)};
+            bool found = false;
+
+            for (auto& it : item->children) {
+                if (it.name == name) {
+                    found = true;
+                    item = &it;
+                    break;
+                }
+            }
+
+            if (!found)
+                return E_NOINTERFACE;
+
+            sh = (SHITEMID*)((uint8_t*)sh + sh->cb);
+        }
+
+        if (item->dir)
+            return E_NOINTERFACE;
+
+        auto tis = new tar_item_stream(tar, *item);
+
+        return tis->QueryInterface(riid, ppv);
     }
 
     if (riid == IID_IPropertyStoreFactory)
