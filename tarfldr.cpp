@@ -5,7 +5,7 @@ using namespace std;
 const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0x12, 0x25, 0x20, 0x0d, 0x7d } };
 const GUID CLSID_TarContextMenu = { 0xa23f73ab, 0x6c42, 0x4689, {0xa6, 0xab, 0x30, 0x13, 0x0c, 0xe7, 0x2a, 0x90 } };
 
-static const array file_extensions = { u".tar" };
+static const array file_extensions = { u".tar", u".gz", u".bz2", u".xz", u".tgz", u".tbz2", u".txz" };
 
 #define PROGID u"TarFolder"
 
