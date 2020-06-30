@@ -132,7 +132,7 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
                 itemlist.push_back(&item);
             }
 
-            shell_items.emplace_back((ITEMIDLIST*)file.data(), ti, itemlist, &ti->root);
+            shell_items.emplace_back((ITEMIDLIST*)file.data(), ti, itemlist, &ti->root, false);
         }
 
         for (auto& si : shell_items) {

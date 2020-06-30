@@ -21,7 +21,8 @@ static const struct {
 // FIXME - others: Extract, Cut, Paste, Properties
 
 shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
-                       const vector<tar_item*>& itemlist, tar_item* root) : tar(tar), itemlist(itemlist), root(root) {
+                       const vector<tar_item*>& itemlist, tar_item* root, bool recursive) :
+                       tar(tar), itemlist(itemlist), root(root), recursive(recursive) {
     this->root_pidl = ILCloneFull(root_pidl);
     cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
     cf_file_contents = RegisterClipboardFormatW(CFSTR_FILECONTENTS);
@@ -269,6 +270,14 @@ void shell_item::populate_full_itemlist2(tar_item* item, const u16string& prefix
 }
 
 void shell_item::populate_full_itemlist() {
+    if (!recursive) {
+        for (auto item : itemlist) {
+            full_itemlist.emplace_back(item, utf8_to_utf16(item->name));
+        }
+
+        return;
+    }
+
     for (auto item : itemlist) {
         populate_full_itemlist2(item, u"");
     }
