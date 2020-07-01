@@ -324,9 +324,56 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
                 if (ret == BZ_STREAM_END)
                     break;
             }
-        }
+        } else if (type & archive_type::xz) {
+            int ret;
+            lzma_stream strm = LZMA_STREAM_INIT;
+            uint8_t inbuf[4096], outbuf[4096];
 
-        // FIXME - xz
+            ret = lzma_stream_decoder(&strm, UINT64_MAX, 0);
+            if (ret != LZMA_OK)
+                throw formatted_error("lzma_stream_decoder returned {}.", ret);
+
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
+
+            while (true) {
+                if (strm.avail_in == 0) {
+                    ULONG read;
+
+                    strm.next_in = inbuf;
+
+                    hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                    if (FAILED(hr))
+                        throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        break;
+                }
+
+                ret = lzma_code(&strm, LZMA_RUN);
+                if (ret != LZMA_OK && ret != LZMA_STREAM_END)
+                    throw formatted_error("lzma_code returned {}.", ret);
+
+                if (strm.avail_out == 0 || ret == LZMA_STREAM_END) {
+                    DWORD written;
+
+                    if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                        throw last_error("WriteFile", GetLastError());
+                }
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+
+                if (ret == LZMA_STREAM_END)
+                    break;
+            }
+        }
 
         stream.reset(); // close IStream
 
