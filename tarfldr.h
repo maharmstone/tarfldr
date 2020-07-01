@@ -82,10 +82,11 @@ public:
 };
 
 enum class archive_type {
-    tarball,
-    gzip,
-    bz2,
-    xz
+    unknown = 0,
+    tarball = 1,
+    gzip = 2,
+    bz2 = 4,
+    xz = 8
 };
 
 class tar_info {
@@ -401,7 +402,7 @@ public:
 
 private:
     LONG refcount = 0;
-    std::vector<std::vector<uint8_t>> files;
+    std::vector<std::tuple<std::string, enum archive_type>> files;
     std::vector<shell_context_menu_item> items;
 };
 
@@ -519,3 +520,6 @@ public:
 private:
     std::string msg;
 };
+
+// tarfldr.cpp
+enum archive_type identify_file_type(const std::u16string_view& fn2);

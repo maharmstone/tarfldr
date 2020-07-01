@@ -726,7 +726,7 @@ HRESULT shell_folder::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF* pcsFlags)
             }
         }
 
-        if (tar->type != archive_type::tarball) {
+        if (!((int)tar->type & (int)archive_type::tarball)) {
             *pcsFlags &= ~SHCOLSTATE_ONBYDEFAULT;
             *pcsFlags |= SHCOLSTATE_HIDDEN;
         }

@@ -84,17 +84,13 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
     }
 }
 
-tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0, nullptr) {
-    auto fn2 = fn.filename().u8string();
-    bool is_tarball = true;
-    decltype(fn2) last_ext;
-
-    // Determine whether the file is a tarball or a single compressed file
-
-    auto st = fn2.rfind(u8".");
+enum archive_type identify_file_type(const u16string_view& fn2) {
+    enum archive_type type = archive_type::unknown;
+    auto st = fn2.rfind(u".");
+    u16string last_ext;
 
     if (st == string::npos)
-        throw runtime_error("Unsupported file type.");
+        return archive_type::unknown;
 
     last_ext = fn2.substr(st + 1);
 
@@ -102,22 +98,40 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         c = tolower(c);
     }
 
-    if (st != 0 && (last_ext == u8"gz" || last_ext == u8"bz2" || last_ext == u8"xz")) {
-        auto st2 = fn2.rfind(u8".", st - 1);
+    if (last_ext == u"gz")
+        type = archive_type::gzip;
+    else if (last_ext == u"bz2")
+        type = archive_type::bz2;
+    else if (last_ext == u"xz")
+        type = archive_type::xz;
+    else if (last_ext == u"tar")
+        type = archive_type::tarball;
+
+    if (st != 0 && (type == archive_type::gzip || type == archive_type::bz2 || type == archive_type::xz)) {
+        auto st2 = fn2.rfind(u".", st - 1);
 
         if (st2 != string::npos) {
-            decltype(fn2) penult_ext = fn2.substr(st2 + 1, st - st2 - 1);
+            u16string penult_ext{fn2.substr(st2 + 1, st - st2 - 1)};
 
             for (auto& c : penult_ext) {
                 c = tolower(c);
             }
 
-            is_tarball = penult_ext == u8"tar";
-        } else
-            is_tarball = false;
+            if (penult_ext == u"tar")
+                type = (enum archive_type)((int)type | (int)archive_type::tarball);
+        }
     }
 
-    if (is_tarball) {
+    return type;
+}
+
+tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0, nullptr) {
+    auto fn2 = fn.filename().u16string();
+    bool is_tarball = true;
+
+    type = identify_file_type(fn2);
+
+    if ((int)type & (int)archive_type::tarball) {
         struct archive_entry* entry;
         struct archive* a = archive_read_new();
 
@@ -144,19 +158,11 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         }
 
         archive_read_free(a);
-
-        type = archive_type::tarball;
-    } else {
+    } else if (type == archive_type::gzip || type == archive_type::bz2 || type == archive_type::xz) {
+        auto st = fn2.rfind(u".");
         auto orig_fn = fn2.substr(0, st);
         size_t size = 0;
         optional<time_t> mtime = nullopt; // FIXME
-
-        if (last_ext == u8"gz")
-            type = archive_type::gzip;
-        else if (last_ext == u8"bz2")
-            type = archive_type::bz2;
-        else if (last_ext == u8"xz")
-            type = archive_type::xz;
 
         if (type == archive_type::gzip) {
             LARGE_INTEGER li;

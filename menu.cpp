@@ -118,21 +118,21 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
         vector<shell_item> shell_items;
 
         for (const auto& file : files) {
-            vector<tar_item*> itemlist;
-            WCHAR path[MAX_PATH];
+            if ((int)get<1>(file) & (int)archive_type::tarball) {
+                vector<tar_item*> itemlist;
+                WCHAR path[MAX_PATH];
 
-            if (!SHGetPathFromIDListW((ITEMIDLIST*)file.data(), path))
-                throw runtime_error("SHGetPathFromIDList failed");
+                if (!SHGetPathFromIDListW((ITEMIDLIST*)get<0>(file).data(), path))
+                    throw runtime_error("SHGetPathFromIDList failed");
 
-            // FIXME - ignore if not one of our files
+                shared_ptr<tar_info> ti{new tar_info(path)};
 
-            shared_ptr<tar_info> ti{new tar_info(path)};
+                for (auto& item : ti->root.children) {
+                    itemlist.push_back(&item);
+                }
 
-            for (auto& item : ti->root.children) {
-                itemlist.push_back(&item);
+                shell_items.emplace_back((ITEMIDLIST*)get<0>(file).data(), ti, itemlist, &ti->root, false);
             }
-
-            shell_items.emplace_back((ITEMIDLIST*)file.data(), ti, itemlist, &ti->root, false);
         }
 
         for (auto& si : shell_items) {
@@ -229,6 +229,7 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     CIDA* cida;
     STGMEDIUM stgm;
     WCHAR path[MAX_PATH];
+    bool show_extract_all = false;
 
     if (pidlFolder || !pdtobj)
         return E_INVALIDARG;
@@ -249,7 +250,7 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     for (unsigned int i = 0; i < cida->cidl; i++) {
         auto pidl = ILCombine(HIDA_GetPIDLFolder(cida), HIDA_GetPIDLItem(cida, i));
 
-        files.emplace_back((uint8_t*)pidl, (uint8_t*)pidl + ILGetSize(pidl));
+        files.emplace_back(string_view((char*)pidl, ILGetSize(pidl)), archive_type::unknown);
 
         ILFree(pidl);
     }
@@ -257,7 +258,54 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     GlobalUnlock(stgm.hGlobal);
     ReleaseStgMedium(&stgm);
 
-    items.emplace_back(IDS_EXTRACT_ALL, "extract", u"extract", shell_context_menu::extract_all);
+    // get names of files
+
+    vector<const ITEMIDLIST*> pidls;
+    pidls.reserve(files.size());
+
+    for (const auto& f : files) {
+        pidls.push_back((ITEMIDLIST*)get<0>(f).data());
+    }
+
+    com_object<IShellItemArray> isia;
+
+    {
+        IShellItemArray* tmp;
+
+        hr = SHCreateShellItemArrayFromIDLists(pidls.size(), pidls.data(), &tmp);
+        if (FAILED(hr))
+            return hr;
+
+        isia.reset(tmp);
+    }
+
+    for (unsigned int i = 0; i < files.size(); i++) {
+        com_object<IShellItem> isi;
+        WCHAR* buf;
+
+        {
+            IShellItem* tmp;
+            hr = isia->GetItemAt(i, &tmp);
+            if (FAILED(hr))
+                return hr;
+
+            isi.reset(tmp);
+        }
+
+        hr = isi->GetDisplayName(SIGDN_NORMALDISPLAY, &buf);
+        if (FAILED(hr))
+            return hr;
+
+        get<1>(files[i]) = identify_file_type((char16_t*)buf);
+
+        if ((int)get<1>(files[i]) & (int)archive_type::tarball)
+            show_extract_all = true;
+
+        CoTaskMemFree(buf);
+    }
+
+    if (show_extract_all)
+        items.emplace_back(IDS_EXTRACT_ALL, "extract", u"extract", shell_context_menu::extract_all);
 
     return S_OK;
 }

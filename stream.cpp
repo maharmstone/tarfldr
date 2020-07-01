@@ -69,27 +69,27 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
     if (cb == 0)
         return S_OK;
 
+    if ((int)type & (int)archive_type::tarball) {
+        auto r = archive_read_data_block(a, &readbuf, &size, &offset);
+
+        if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
+            throw runtime_error(archive_error_string(a));
+
+        if (size == 0)
+            return S_OK;
+
+        copy_size = min(size, (size_t)cb);
+
+        memcpy(pv, readbuf, copy_size);
+        *pcbRead += copy_size;
+
+        if (size > cb)
+            buf.append(string_view((char*)readbuf + cb, size - cb));
+
+        return S_OK;
+    }
+
     switch (type) {
-        case archive_type::tarball: {
-            auto r = archive_read_data_block(a, &readbuf, &size, &offset);
-
-            if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
-                throw runtime_error(archive_error_string(a));
-
-            if (size == 0)
-                return S_OK;
-
-            copy_size = min(size, (size_t)cb);
-
-            memcpy(pv, readbuf, copy_size);
-            *pcbRead += copy_size;
-
-            if (size > cb)
-                buf.append(string_view((char*)readbuf + cb, size - cb));
-
-            break;
-        }
-
         case archive_type::gzip: {
             auto ret = gzread(gzf, pv, cb);
 
@@ -265,43 +265,43 @@ HRESULT tar_item_stream::Clone(IStream** ppstm) {
 }
 
 tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item) : item(item), type(tar->type) {
-    switch (tar->type) {
-        case archive_type::tarball: {
-            struct archive_entry* entry;
+    if ((int)tar->type & (int)archive_type::tarball) {
+        struct archive_entry* entry;
 
-            a = archive_read_new();
+        a = archive_read_new();
 
-            try {
-                int r;
-                bool found = false;
+        try {
+            int r;
+            bool found = false;
 
-                archive_read_support_filter_all(a);
-                archive_read_support_format_all(a);
+            archive_read_support_filter_all(a);
+            archive_read_support_format_all(a);
 
-                r = archive_read_open_filename(a, (char*)tar->archive_fn.u8string().c_str(), BLOCK_SIZE);
+            r = archive_read_open_filename(a, (char*)tar->archive_fn.u8string().c_str(), BLOCK_SIZE);
 
-                if (r != ARCHIVE_OK)
-                    throw runtime_error(archive_error_string(a));
+            if (r != ARCHIVE_OK)
+                throw runtime_error(archive_error_string(a));
 
-                while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-                    string_view name = archive_entry_pathname(entry);
+            while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+                string_view name = archive_entry_pathname(entry);
 
-                    if (name == item.full_path) {
-                        found = true;
-                        break;
-                    }
+                if (name == item.full_path) {
+                    found = true;
+                    break;
                 }
-
-                if (!found)
-                    throw formatted_error("Could not find {} in archive.", item.full_path);
-            } catch (...) {
-                archive_read_free(a);
-                throw;
             }
 
-            break;
+            if (!found)
+                throw formatted_error("Could not find {} in archive.", item.full_path);
+        } catch (...) {
+            archive_read_free(a);
+            throw;
         }
 
+        return;
+    }
+
+    switch (tar->type) {
         case archive_type::gzip: {
             gzf = gzopen((char*)tar->archive_fn.u8string().c_str(), "r");
 
