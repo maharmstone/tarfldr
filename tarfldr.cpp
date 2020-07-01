@@ -152,14 +152,41 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         size_t size = 0; // FIXME
         optional<time_t> mtime = nullopt; // FIXME
 
-        add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
-
         if (last_ext == u8"gz")
             type = archive_type::gzip;
         else if (last_ext == u8"bz2")
             type = archive_type::bz2;
         else if (last_ext == u8"xz")
             type = archive_type::xz;
+
+        if (type == archive_type::gzip) {
+            LARGE_INTEGER li;
+            uint32_t size2;
+            DWORD read;
+
+            // Read uncompressed length from end of file
+
+            // FIXME - this isn't reliable: see https://stackoverflow.com/questions/9209138/uncompressed-file-size-using-zlibs-gzip-file-access-function
+
+            unique_handle h{CreateFileW((LPCWSTR)fn.u16string().c_str(), GENERIC_READ, 0, nullptr,
+                                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+            if (h.get() == INVALID_HANDLE_VALUE)
+                throw last_error("CreateFile", GetLastError());
+
+            li.QuadPart = -((int64_t)sizeof(uint32_t));
+
+            if (!SetFilePointerEx(h.get(), li, nullptr, FILE_END))
+                throw last_error("SetFilePointerEx", GetLastError());
+
+            if (!ReadFile(h.get(), &size2, sizeof(uint32_t), &read, nullptr))
+                throw last_error("ReadFile", GetLastError());
+
+            size = size2;
+        }
+
+        add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
+
     }
 }
 
@@ -388,7 +415,7 @@ SFGAOF tar_item::get_atts() const {
     return atts;
 }
 
-tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item) : item(item) {
+tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item) : item(item), type(tar->type) {
     switch (tar->type) {
         case archive_type::tarball: {
             struct archive_entry* entry;
@@ -426,6 +453,15 @@ tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item&
             break;
         }
 
+        case archive_type::gzip: {
+            gzf = gzopen((char*)tar->archive_fn.u8string().c_str(), "r");
+
+            if (!gzf)
+                throw formatted_error("Could not open gzip file {}.", tar->archive_fn.string());
+
+            break;
+        }
+
         default:
             throw runtime_error("FIXME - unsupported archive type"); // FIXME
     }
@@ -434,6 +470,9 @@ tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item&
 tar_item_stream::~tar_item_stream() {
     if (a)
         archive_read_free(a);
+
+    if (gzf)
+        gzclose(gzf);
 }
 
 HRESULT tar_item_stream::QueryInterface(REFIID iid, void** ppv) {
@@ -465,7 +504,6 @@ ULONG tar_item_stream::Release() {
 }
 
 HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
-    int r;
     size_t size, copy_size;
     int64_t offset;
     const void* readbuf;
@@ -491,21 +529,38 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
     if (cb == 0)
         return S_OK;
 
-    r = archive_read_data_block(a, &readbuf, &size, &offset);
+    switch (type) {
+        case archive_type::tarball: {
+            auto r = archive_read_data_block(a, &readbuf, &size, &offset);
 
-    if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
-        throw runtime_error(archive_error_string(a));
+            if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
+                throw runtime_error(archive_error_string(a));
 
-    if (size == 0)
-        return S_OK;
+            if (size == 0)
+                return S_OK;
 
-    copy_size = min(size, (size_t)cb);
+            copy_size = min(size, (size_t)cb);
 
-    memcpy(pv, readbuf, copy_size);
-    *pcbRead += copy_size;
+            memcpy(pv, readbuf, copy_size);
+            *pcbRead += copy_size;
 
-    if (size > cb)
-        buf.append(string_view((char*)readbuf + cb, size - cb));
+            if (size > cb)
+                buf.append(string_view((char*)readbuf + cb, size - cb));
+
+            break;
+        }
+
+        case archive_type::gzip: {
+            auto ret = gzread(gzf, pv, cb);
+
+            if (ret < 0)
+                throw formatted_error("gzread returned {}.", ret); // FIXME - use gzerror to get actual error
+
+            *pcbRead = ret;
+
+            break;
+        }
+    }
 
     return S_OK;
 }

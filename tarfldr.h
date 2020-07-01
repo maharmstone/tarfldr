@@ -14,6 +14,7 @@
 #include <fmt/format.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include <zlib.h>
 
 extern const GUID CLSID_TarFolder;
 
@@ -349,9 +350,11 @@ public:
 
 private:
     LONG refcount = 0;
-    struct archive* a;
+    struct archive* a = nullptr;
     tar_item& item;
     std::string buf;
+    gzFile gzf = nullptr;
+    enum archive_type type;
 };
 
 class shell_context_menu;
