@@ -201,6 +201,57 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
             }
 
             BZ2_bzclose(bzf);
+        } else if (type == archive_type::xz) {
+            uint8_t inbuf[4096], outbuf[4096];
+            DWORD read;
+
+            lzma_stream strm = LZMA_STREAM_INIT;
+
+            unique_handle h{CreateFileW((LPCWSTR)fn.u16string().c_str(), GENERIC_READ, 0, nullptr,
+                                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+            if (h.get() == INVALID_HANDLE_VALUE)
+                throw last_error("CreateFile", GetLastError());
+
+            auto ret = lzma_stream_decoder(&strm, UINT64_MAX, 0);
+
+            if (ret != LZMA_OK)
+                throw formatted_error("lzma_stream_decoder returned {}.", ret);
+
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
+
+            while (true) {
+                if (strm.avail_in == 0) {
+                    strm.next_in = inbuf;
+
+                    if (!ReadFile(h.get(), inbuf, sizeof(inbuf), &read, nullptr))
+                        throw last_error("ReadFile", GetLastError());
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        break;
+                }
+
+                auto ret = lzma_code(&strm, LZMA_RUN);
+
+                if (strm.avail_out == 0 || ret == LZMA_STREAM_END)
+                    size += sizeof(outbuf) - strm.avail_out;
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+
+                if (ret == LZMA_STREAM_END)
+                    break;
+
+                if (ret != LZMA_OK)
+                    throw formatted_error("lzma_code returned {}.", ret);
+            }
         }
 
         add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
@@ -488,6 +539,29 @@ tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item&
             break;
         }
 
+        case archive_type::xz: {
+            h.reset(CreateFileW((LPCWSTR)tar->archive_fn.u16string().c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+
+            if (h.get() == INVALID_HANDLE_VALUE)
+                throw last_error("CreateFile", GetLastError());
+
+            auto ret = lzma_stream_decoder(&strm, UINT64_MAX, 0);
+
+            if (ret != LZMA_OK)
+                throw formatted_error("lzma_stream_decoder returned {}.", ret);
+
+            lzma_inbuf.resize(4096);
+            lzma_outbuf.resize(4096);
+
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = (uint8_t*)lzma_outbuf.data();
+            strm.avail_out = lzma_outbuf.length();
+
+            break;
+        }
+
         default:
             throw runtime_error("FIXME - unsupported archive type"); // FIXME
     }
@@ -597,6 +671,54 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
                 throw formatted_error("BZ2_bzread returned {}.", ret); // FIXME - use BZ2_bzerror to get actual error
 
             *pcbRead = ret;
+
+            break;
+        }
+
+        case archive_type::xz: {
+            while (true) {
+                if (strm.avail_in == 0) {
+                    DWORD read;
+
+                    strm.next_in = (uint8_t*)lzma_inbuf.data();
+
+                    if (!ReadFile(h.get(), lzma_inbuf.data(), lzma_inbuf.length(), &read, nullptr))
+                        throw last_error("ReadFile", GetLastError());
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        break;
+                }
+
+                auto ret = lzma_code(&strm, LZMA_RUN);
+
+                if (ret != LZMA_OK && ret != LZMA_STREAM_END)
+                    throw formatted_error("lzma_code returned {}.", ret);
+
+                if (strm.avail_out == 0 || ret == LZMA_STREAM_END) {
+                    size_t read_size = lzma_outbuf.length() - strm.avail_out;
+
+                    copy_size = min(read_size, (size_t)cb);
+
+                    memcpy(pv, lzma_outbuf.data(), copy_size);
+
+                    pv = (uint8_t*)pv + copy_size;
+                    cb -= copy_size;
+                    *pcbRead += copy_size;
+
+                    if (read_size > cb)
+                        buf.append(string_view(lzma_outbuf).substr(cb, read_size - cb));
+                }
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = (uint8_t*)lzma_outbuf.data();
+                    strm.avail_out = lzma_outbuf.length();
+                }
+
+                if (ret == LZMA_STREAM_END)
+                    break;
+            }
 
             break;
         }
