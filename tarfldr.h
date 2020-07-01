@@ -84,6 +84,7 @@ public:
 
     tar_item root;
     const std::filesystem::path archive_fn;
+    bool single_file;
 
 private:
     void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime, bool is_dir,

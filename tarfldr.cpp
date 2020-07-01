@@ -85,33 +85,77 @@ void tar_info::add_entry(const string_view& fn, int64_t size, const optional<tim
     }
 }
 
-tar_info::tar_info(const std::filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0, nullptr) {
-    struct archive_entry* entry;
-    struct archive* a = archive_read_new();
+tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, true, "", nullopt, "", "", 0, nullptr) {
+    auto fn2 = fn.filename().u8string();
+    bool is_tarball = true;
+    decltype(fn2) last_ext;
 
-    try {
-        archive_read_support_filter_all(a);
-        archive_read_support_format_all(a);
+    // Determine whether the file is a tarball or a single compressed file
 
-        auto r = archive_read_open_filename(a, (char*)fn.u8string().c_str(), BLOCK_SIZE);
+    auto st = fn2.rfind(u8".");
 
-        if (r != ARCHIVE_OK)
-            throw runtime_error(archive_error_string(a));
+    if (st == string::npos)
+        throw runtime_error("Unsupported file type.");
 
-        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-            if (archive_entry_pathname_utf8(entry)) {
-                add_entry(archive_entry_pathname_utf8(entry), archive_entry_size(entry),
-                        archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt},
-                        archive_entry_filetype(entry) == AE_IFDIR, archive_entry_uname_utf8(entry),
-                        archive_entry_gname_utf8(entry), archive_entry_mode(entry));
-            }
-        }
-    } catch (...) {
-        archive_read_free(a);
-        throw;
+    last_ext = fn2.substr(st + 1);
+
+    for (auto& c : last_ext) {
+        c = tolower(c);
     }
 
-    archive_read_free(a);
+    if (st != 0 && (last_ext == u8"gz" || last_ext == u8"bz2" || last_ext == u8"xz")) {
+        auto st2 = fn2.rfind(u8".", st - 1);
+
+        if (st2 != string::npos) {
+            decltype(fn2) penult_ext = fn2.substr(st2 + 1, st - st2 - 1);
+
+            for (auto& c : penult_ext) {
+                c = tolower(c);
+            }
+
+            is_tarball = penult_ext == u8"tar";
+        } else
+            is_tarball = false;
+    }
+
+    if (is_tarball) {
+        struct archive_entry* entry;
+        struct archive* a = archive_read_new();
+
+        try {
+            archive_read_support_filter_all(a);
+            archive_read_support_format_all(a);
+
+            auto r = archive_read_open_filename(a, (char*)fn.u8string().c_str(), BLOCK_SIZE);
+
+            if (r != ARCHIVE_OK)
+                throw runtime_error(archive_error_string(a));
+
+            while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+                if (archive_entry_pathname_utf8(entry)) {
+                    add_entry(archive_entry_pathname_utf8(entry), archive_entry_size(entry),
+                            archive_entry_mtime_is_set(entry) ? optional<time_t>{archive_entry_mtime(entry)} : optional<time_t>{nullopt},
+                            archive_entry_filetype(entry) == AE_IFDIR, archive_entry_uname_utf8(entry),
+                            archive_entry_gname_utf8(entry), archive_entry_mode(entry));
+                }
+            }
+        } catch (...) {
+            archive_read_free(a);
+            throw;
+        }
+
+        archive_read_free(a);
+
+        single_file = false;
+    } else {
+        auto orig_fn = fn2.substr(0, st);
+        size_t size = 0; // FIXME
+        optional<time_t> mtime = nullopt; // FIXME
+
+        add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
+
+        single_file = true;
+    }
 }
 
 extern "C" STDAPI DllCanUnloadNow(void) {
