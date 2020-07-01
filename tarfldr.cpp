@@ -158,13 +158,13 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         }
 
         archive_read_free(a);
-    } else if (type == archive_type::gzip || type == archive_type::bz2 || type == archive_type::xz) {
+    } else if (type & archive_type::gzip || type & archive_type::bz2 || type & archive_type::xz) {
         auto st = fn2.rfind(u".");
         auto orig_fn = fn2.substr(0, st);
         size_t size = 0;
         optional<time_t> mtime = nullopt; // FIXME
 
-        if (type == archive_type::gzip) {
+        if (type & archive_type::gzip) {
             LARGE_INTEGER li;
             uint32_t size2;
             DWORD read;
@@ -188,7 +188,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
                 throw last_error("ReadFile", GetLastError());
 
             size = size2;
-        } else if (type == archive_type::bz2) {
+        } else if (type & archive_type::bz2) {
             auto bzf = BZ2_bzopen((char*)fn.u8string().c_str(), "r");
 
             if (!bzf)
@@ -206,7 +206,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
             }
 
             BZ2_bzclose(bzf);
-        } else if (type == archive_type::xz) {
+        } else if (type & archive_type::xz) {
             uint8_t inbuf[4096], outbuf[4096];
             DWORD read;
 
@@ -259,7 +259,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
             }
         }
 
-        add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
+        add_entry(utf16_to_utf8(orig_fn).c_str(), size, mtime, false, nullptr, nullptr, 0);
     }
 }
 
