@@ -15,6 +15,7 @@ STRINGTABLE
     IDS_MODE	    "Mode"
     IDS_EXTRACT_ALL "E&xtract All..."
     IDS_EXTRACT_TEXT "Choose a destination for the contents of the archive."
+    IDS_DECOMPRESS  "&Decompress"
 }
 
 IDI_TAR_ICON ICON tar.ico

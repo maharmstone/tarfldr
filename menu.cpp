@@ -155,6 +155,14 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
     }
 }
 
+void shell_context_menu::decompress(CMINVOKECOMMANDINFO* pici) {
+    try {
+        throw runtime_error("FIXME - decompress"); // FIXME
+    } catch (const exception& e) {
+        MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+    }
+}
+
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
@@ -229,7 +237,7 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     CIDA* cida;
     STGMEDIUM stgm;
     WCHAR path[MAX_PATH];
-    bool show_extract_all = false;
+    bool show_extract_all = false, show_decompress = false;
 
     if (pidlFolder || !pdtobj)
         return E_INVALIDARG;
@@ -296,16 +304,22 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
         if (FAILED(hr))
             return hr;
 
-        get<1>(files[i]) = identify_file_type((char16_t*)buf);
+        auto type = get<1>(files[i]) = identify_file_type((char16_t*)buf);
 
-        if ((int)get<1>(files[i]) & (int)archive_type::tarball)
+        if ((int)type & (int)archive_type::tarball)
             show_extract_all = true;
+
+        if ((int)type & (int)archive_type::gzip || (int)type & (int)archive_type::bz2 || (int)type & (int)archive_type::xz)
+            show_decompress = true;
 
         CoTaskMemFree(buf);
     }
 
     if (show_extract_all)
         items.emplace_back(IDS_EXTRACT_ALL, "extract", u"extract", shell_context_menu::extract_all);
+
+    if (show_decompress)
+        items.emplace_back(IDS_DECOMPRESS, "decompress", u"decompress", shell_context_menu::decompress);
 
     return S_OK;
 }

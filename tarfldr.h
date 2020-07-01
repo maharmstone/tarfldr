@@ -399,6 +399,7 @@ public:
     HRESULT __stdcall Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject* pdtobj, HKEY hkeyProgID);
 
     void extract_all(CMINVOKECOMMANDINFO* pici);
+    void decompress(CMINVOKECOMMANDINFO* pici);
 
 private:
     LONG refcount = 0;
