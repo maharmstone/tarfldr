@@ -78,13 +78,20 @@ public:
     mode_t mode;
 };
 
+enum class archive_type {
+    tarball,
+    gzip,
+    bz2,
+    xz
+};
+
 class tar_info {
 public:
     tar_info(const std::filesystem::path& fn);
 
     tar_item root;
     const std::filesystem::path archive_fn;
-    bool single_file;
+    enum archive_type type;
 
 private:
     void add_entry(const std::string_view& fn, int64_t size, const std::optional<time_t>& mtime, bool is_dir,

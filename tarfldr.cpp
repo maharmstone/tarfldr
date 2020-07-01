@@ -146,7 +146,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
 
         archive_read_free(a);
 
-        single_file = false;
+        type = archive_type::tarball;
     } else {
         auto orig_fn = fn2.substr(0, st);
         size_t size = 0; // FIXME
@@ -154,7 +154,12 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
 
         add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
 
-        single_file = true;
+        if (last_ext == u8"gz")
+            type = archive_type::gzip;
+        else if (last_ext == u8"bz2")
+            type = archive_type::bz2;
+        else if (last_ext == u8"xz")
+            type = archive_type::xz;
     }
 }
 
@@ -384,36 +389,45 @@ SFGAOF tar_item::get_atts() const {
 }
 
 tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item) : item(item) {
-    struct archive_entry* entry;
+    switch (tar->type) {
+        case archive_type::tarball: {
+            struct archive_entry* entry;
 
-    a = archive_read_new();
+            a = archive_read_new();
 
-    try {
-        int r;
-        bool found = false;
+            try {
+                int r;
+                bool found = false;
 
-        archive_read_support_filter_all(a);
-        archive_read_support_format_all(a);
+                archive_read_support_filter_all(a);
+                archive_read_support_format_all(a);
 
-        r = archive_read_open_filename(a, (char*)tar->archive_fn.u8string().c_str(), BLOCK_SIZE);
+                r = archive_read_open_filename(a, (char*)tar->archive_fn.u8string().c_str(), BLOCK_SIZE);
 
-        if (r != ARCHIVE_OK)
-            throw runtime_error(archive_error_string(a));
+                if (r != ARCHIVE_OK)
+                    throw runtime_error(archive_error_string(a));
 
-        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-            string_view name = archive_entry_pathname(entry);
+                while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+                    string_view name = archive_entry_pathname(entry);
 
-            if (name == item.full_path) {
-                found = true;
-                break;
+                    if (name == item.full_path) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                    throw formatted_error("Could not find {} in archive.", item.full_path);
+            } catch (...) {
+                archive_read_free(a);
+                throw;
             }
+
+            break;
         }
 
-        if (!found)
-            throw formatted_error("Could not find {} in archive.", item.full_path);
-    } catch (...) {
-        archive_read_free(a);
-        throw;
+        default:
+            throw runtime_error("FIXME - unsupported archive type"); // FIXME
     }
 }
 
