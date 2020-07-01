@@ -69,7 +69,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
     if (cb == 0)
         return S_OK;
 
-    if ((int)type & (int)archive_type::tarball) {
+    if (type & archive_type::tarball) {
         auto r = archive_read_data_block(a, &readbuf, &size, &offset);
 
         if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
@@ -265,7 +265,7 @@ HRESULT tar_item_stream::Clone(IStream** ppstm) {
 }
 
 tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item& item) : item(item), type(tar->type) {
-    if ((int)tar->type & (int)archive_type::tarball) {
+    if (tar->type & archive_type::tarball) {
         struct archive_entry* entry;
 
         a = archive_read_new();

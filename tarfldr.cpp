@@ -118,7 +118,7 @@ enum archive_type identify_file_type(const u16string_view& fn2) {
             }
 
             if (penult_ext == u"tar")
-                type = (enum archive_type)((int)type | (int)archive_type::tarball);
+                type |= archive_type::tarball;
         }
     }
 
@@ -131,7 +131,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
 
     type = identify_file_type(fn2);
 
-    if ((int)type & (int)archive_type::tarball) {
+    if (type & archive_type::tarball) {
         struct archive_entry* entry;
         struct archive* a = archive_read_new();
 

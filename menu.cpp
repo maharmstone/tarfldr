@@ -118,7 +118,7 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
         vector<shell_item> shell_items;
 
         for (const auto& file : files) {
-            if ((int)get<1>(file) & (int)archive_type::tarball) {
+            if (get<1>(file) & archive_type::tarball) {
                 vector<tar_item*> itemlist;
                 WCHAR path[MAX_PATH];
 
@@ -155,9 +155,127 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
     }
 }
 
+static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
+    HRESULT hr;
+    com_object<IShellItem> isi;
+    com_object<IStream> stream;
+    u16string orig_fn, new_fn;
+
+    {
+        IShellItem* tmp;
+
+        hr = SHCreateItemFromIDList(pidl, IID_IShellItem, (void**)&tmp);
+        if (FAILED(hr))
+            throw formatted_error("SHCreateItemFromIDList returned {:08x}.", (uint32_t)hr);
+
+        isi.reset(tmp);
+    }
+
+    {
+        IStream* tmp;
+
+        hr = isi->BindToHandler(nullptr, BHID_Stream, IID_IStream, (void**)&tmp);
+        if (FAILED(hr))
+            throw formatted_error("IShellItem::BindToHandler returned {:08x}.", (uint32_t)hr);
+
+        stream.reset(tmp);
+    }
+
+    {
+        WCHAR buf[MAX_PATH];
+
+        if (!SHGetPathFromIDListW(pidl, (WCHAR*)buf))
+            throw runtime_error("SHGetPathFromIDList failed");
+
+        orig_fn = new_fn = (char16_t*)buf;
+    }
+
+    auto st = new_fn.rfind(u".");
+
+    if (st == string::npos)
+        throw runtime_error("Could not find file extension.");
+
+    new_fn = new_fn.substr(0, st);
+
+    unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), GENERIC_WRITE, 0, nullptr,
+                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+    if (h.get() == INVALID_HANDLE_VALUE)
+        throw last_error("CreateFile", GetLastError());
+
+    if (type & archive_type::gzip) {
+        int ret;
+        z_stream strm;
+        uint8_t inbuf[4096], outbuf[4096];
+
+        // FIXME - can we do this via IStream rather than CreateFile etc.?
+
+        strm.zalloc = Z_NULL;
+        strm.zfree = Z_NULL;
+        strm.opaque = Z_NULL;
+
+        ret = inflateInit2(&strm, 16 + MAX_WBITS);
+        if (ret != Z_OK)
+            throw formatted_error("inflateInit2 returned {}.", ret);
+
+        strm.next_in = nullptr;
+        strm.avail_in = 0;
+        strm.next_out = outbuf;
+        strm.avail_out = sizeof(outbuf);
+
+        while (true) {
+            if (strm.avail_in == 0) {
+                ULONG read;
+
+                strm.next_in = inbuf;
+
+                hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                if (FAILED(hr))
+                    throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+
+                strm.avail_in = read;
+
+                if (read == 0) // end of file
+                    break;
+            }
+
+            ret = inflate(&strm, Z_NO_FLUSH);
+            if (ret != Z_OK && ret != Z_STREAM_END)
+                throw formatted_error("inflate returned {}.", ret);
+
+            if (strm.avail_out == 0 || ret == Z_STREAM_END) {
+                DWORD written;
+
+                if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                    throw last_error("WriteFile", GetLastError());
+            }
+
+            if (strm.avail_out == 0) {
+                strm.next_out = outbuf;
+                strm.avail_out = sizeof(outbuf);
+            }
+
+            if (ret == Z_STREAM_END)
+                break;
+        }
+    }
+
+    // FIXME - bzip2
+    // FIXME - xz
+
+    stream.reset();
+
+    // FIXME - change times to those of original file
+    // FIXME - copy ADSes and SD?
+    // FIXME - delete original file
+}
+
 void shell_context_menu::decompress(CMINVOKECOMMANDINFO* pici) {
     try {
-        throw runtime_error("FIXME - decompress"); // FIXME
+        for (const auto& file : files) {
+            if (get<1>(file) & archive_type::gzip || get<1>(file) & archive_type::bz2 || get<1>(file) & archive_type::xz)
+                decompress_file((ITEMIDLIST*)get<0>(file).data(), get<1>(file));
+        }
     } catch (const exception& e) {
         MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
     }
@@ -306,10 +424,10 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
 
         auto type = get<1>(files[i]) = identify_file_type((char16_t*)buf);
 
-        if ((int)type & (int)archive_type::tarball)
+        if (type & archive_type::tarball)
             show_extract_all = true;
 
-        if ((int)type & (int)archive_type::gzip || (int)type & (int)archive_type::bz2 || (int)type & (int)archive_type::xz)
+        if (type & archive_type::gzip || type & archive_type::bz2 || type & archive_type::xz)
             show_decompress = true;
 
         CoTaskMemFree(buf);
