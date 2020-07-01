@@ -14,3 +14,4 @@
 #define IDS_MODE                       110
 #define IDS_EXTRACT_ALL                111
 #define IDS_EXTRACT_TEXT               112
+#define IDI_COMPRESSED_ICON            113

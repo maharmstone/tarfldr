@@ -6,8 +6,7 @@ const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0
 const GUID CLSID_TarContextMenu = { 0xa23f73ab, 0x6c42, 0x4689, {0xa6, 0xab, 0x30, 0x13, 0x0c, 0xe7, 0x2a, 0x90 } };
 
 static const array file_extensions = { u".tar", u".gz", u".bz2", u".xz", u".tgz", u".tbz2", u".txz" };
-
-#define PROGID u"TarFolder"
+static const array prog_ids = { make_tuple(u"TarFolder", 0), make_tuple(u"TarFolderCompressed", 1) }; // name, icon number
 
 #define BLOCK_SIZE 20480
 
@@ -330,8 +329,10 @@ extern "C" HRESULT DllRegisterServer() {
         auto exec_folder = utf8_to_utf16(fmt::format("{}", CLSID_ExecuteFolder));
 
         for (const auto& ext : file_extensions) {
-            create_reg_key(HKEY_CLASSES_ROOT, ext, PROGID);
-            create_reg_key(HKEY_CLASSES_ROOT, ext + u"\\"s + PROGID);
+            const auto& prog_id = get<0>(ext == u".tar"s ? prog_ids[0] : prog_ids[1]);
+
+            create_reg_key(HKEY_CLASSES_ROOT, ext, prog_id);
+            create_reg_key(HKEY_CLASSES_ROOT, ext + u"\\"s + prog_id);
 
             set_reg_value(HKEY_CLASSES_ROOT, ext, u"PerceivedType", u"compressed");
 
@@ -339,20 +340,29 @@ extern "C" HRESULT DllRegisterServer() {
             set_reg_value(HKEY_CLASSES_ROOT, ext + u"\\OpenWithProgids"s, u"TarFolder", u"");
         }
 
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID);
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\CLSID", clsid);
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\DefaultIcon", file + u",0"s);
+        auto clsid_menu = utf8_to_utf16(fmt::format("{}", CLSID_TarContextMenu));
 
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell");
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open");
-        set_reg_value(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open", u"MultiSelectModel", u"Document");
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open\\Command", u"%SystemRoot%\\Explorer.exe /idlist,%I,%L", true);
-        set_reg_value(HKEY_CLASSES_ROOT, PROGID u"\\shell\\Open\\Command", u"DelegateExecute", exec_folder);
+        for (const auto& p : prog_ids) {
+            const auto& prog_id = get<0>(p);
 
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx");
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\StorageHandler", clsid);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\CLSID"s, clsid);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\DefaultIcon"s, file + u","s + utf8_to_utf16(to_string(get<1>(p))));
 
-        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid, PROGID);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\shell"s);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\shell\\Open"s);
+            set_reg_value(HKEY_CLASSES_ROOT, prog_id + u"\\shell\\Open"s, u"MultiSelectModel", u"Document");
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\shell\\Open\\Command"s, u"%SystemRoot%\\Explorer.exe /idlist,%I,%L", true);
+            set_reg_value(HKEY_CLASSES_ROOT, prog_id + u"\\shell\\Open\\Command"s, u"DelegateExecute", exec_folder);
+
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\ShellEx"s);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\ShellEx\\StorageHandler"s, clsid);
+
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\ShellEx\\ContextMenuHandlers"s);
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\ShellEx\\ContextMenuHandlers\\tarfldr"s, clsid_menu);
+        }
+
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid, get<0>(prog_ids[0]));
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\DefaultIcon", file + u",0"s);
 
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\Implemented Categories");
@@ -360,19 +370,14 @@ extern "C" HRESULT DllRegisterServer() {
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\InProcServer32", file);
         set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\InProcServer32", u"ThreadingModel", u"Apartment");
 
-        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ProgID", PROGID);
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ProgID", get<0>(prog_ids[0]));
 
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ShellFolder");
         set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\ShellFolder", u"Attributes", SFGAO_FOLDER);
 
-        auto clsid_menu = utf8_to_utf16(fmt::format("{}", CLSID_TarContextMenu));
-
-        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu, PROGID);
+        create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu, get<0>(prog_ids[0]));
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu + u"\\InProcServer32", file);
         set_reg_value(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid_menu + u"\\InProcServer32", u"ThreadingModel", u"Apartment");
-
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\ContextMenuHandlers");
-        create_reg_key(HKEY_CLASSES_ROOT, PROGID u"\\ShellEx\\ContextMenuHandlers\\tarfldr", clsid_menu);
 
         return S_OK;
     } catch (const exception& e) {
@@ -397,7 +402,10 @@ extern "C" HRESULT DllUnregisterServer() {
 
         delete_reg_tree(HKEY_CLASSES_ROOT, u"CLSID\\" + utf8_to_utf16(fmt::format("{}", CLSID_TarFolder)));
         delete_reg_tree(HKEY_CLASSES_ROOT, u"CLSID\\" + utf8_to_utf16(fmt::format("{}", CLSID_TarContextMenu)));
-        delete_reg_tree(HKEY_CLASSES_ROOT, PROGID);
+
+        for (const auto& prog_id : prog_ids) {
+            delete_reg_tree(HKEY_CLASSES_ROOT, get<0>(prog_id));
+        }
 
         return S_OK;
     } catch (const exception& e) {
