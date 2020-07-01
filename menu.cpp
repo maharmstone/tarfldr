@@ -160,6 +160,27 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
     com_object<IShellItem> isi;
     com_object<IStream> stream;
     u16string orig_fn, new_fn;
+    FILETIME creation_time, access_time, write_time;
+
+    {
+        WCHAR buf[MAX_PATH];
+
+        if (!SHGetPathFromIDListW(pidl, (WCHAR*)buf))
+            throw runtime_error("SHGetPathFromIDList failed");
+
+        orig_fn = new_fn = (char16_t*)buf;
+    }
+
+    {
+        unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), READ_ATTRIBUTES, 0, nullptr,
+                                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+        if (h.get() == INVALID_HANDLE_VALUE)
+            throw last_error("CreateFile", GetLastError());
+
+        if (!GetFileTime(h.get(), &creation_time, &access_time, &write_time))
+            throw last_error("GetFileTime", GetLastError());
+    }
 
     {
         IShellItem* tmp;
@@ -179,15 +200,6 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
             throw formatted_error("IShellItem::BindToHandler returned {:08x}.", (uint32_t)hr);
 
         stream.reset(tmp);
-    }
-
-    {
-        WCHAR buf[MAX_PATH];
-
-        if (!SHGetPathFromIDListW(pidl, (WCHAR*)buf))
-            throw runtime_error("SHGetPathFromIDList failed");
-
-        orig_fn = new_fn = (char16_t*)buf;
     }
 
     auto st = new_fn.rfind(u".");
@@ -263,10 +275,14 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
     // FIXME - bzip2
     // FIXME - xz
 
-    stream.reset();
+    stream.reset(); // close IStream
 
-    // FIXME - change times to those of original file
-    // FIXME - copy ADSes and SD?
+    // change times to those of original file
+
+    if (!SetFileTime(h.get(), &creation_time, &access_time, &write_time))
+        throw last_error("SetFileTime", GetLastError());
+
+    // FIXME - copy ADSes, extended attributes, and SD?
     // FIXME - delete original file
 }
 
