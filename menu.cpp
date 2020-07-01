@@ -210,79 +210,137 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
     new_fn = new_fn.substr(0, st);
 
     unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), GENERIC_WRITE, 0, nullptr,
-                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
+                    CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)};
 
     if (h.get() == INVALID_HANDLE_VALUE)
         throw last_error("CreateFile", GetLastError());
 
-    if (type & archive_type::gzip) {
-        int ret;
-        z_stream strm;
-        uint8_t inbuf[4096], outbuf[4096];
+    try {
+        if (type & archive_type::gzip) {
+            int ret;
+            z_stream strm;
+            uint8_t inbuf[4096], outbuf[4096];
 
-        // FIXME - can we do this via IStream rather than CreateFile etc.?
+            // FIXME - can we do this via IStream rather than CreateFile etc.?
 
-        strm.zalloc = Z_NULL;
-        strm.zfree = Z_NULL;
-        strm.opaque = Z_NULL;
+            strm.zalloc = Z_NULL;
+            strm.zfree = Z_NULL;
+            strm.opaque = Z_NULL;
 
-        ret = inflateInit2(&strm, 16 + MAX_WBITS);
-        if (ret != Z_OK)
-            throw formatted_error("inflateInit2 returned {}.", ret);
+            ret = inflateInit2(&strm, 16 + MAX_WBITS);
+            if (ret != Z_OK)
+                throw formatted_error("inflateInit2 returned {}.", ret);
 
-        strm.next_in = nullptr;
-        strm.avail_in = 0;
-        strm.next_out = outbuf;
-        strm.avail_out = sizeof(outbuf);
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
 
-        while (true) {
-            if (strm.avail_in == 0) {
-                ULONG read;
+            while (true) {
+                if (strm.avail_in == 0) {
+                    ULONG read;
 
-                strm.next_in = inbuf;
+                    strm.next_in = inbuf;
 
-                hr = stream->Read(inbuf, sizeof(inbuf), &read);
-                if (FAILED(hr))
-                    throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+                    hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                    if (FAILED(hr))
+                        throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
 
-                strm.avail_in = read;
+                    strm.avail_in = read;
 
-                if (read == 0) // end of file
+                    if (read == 0) // end of file
+                        break;
+                }
+
+                ret = inflate(&strm, Z_NO_FLUSH);
+                if (ret != Z_OK && ret != Z_STREAM_END)
+                    throw formatted_error("inflate returned {}.", ret);
+
+                if (strm.avail_out == 0 || ret == Z_STREAM_END) {
+                    DWORD written;
+
+                    if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                        throw last_error("WriteFile", GetLastError());
+                }
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+
+                if (ret == Z_STREAM_END)
                     break;
             }
+        } else if (type & archive_type::bz2) {
+            int ret;
+            bz_stream strm;
+            char inbuf[4096], outbuf[4096];
 
-            ret = inflate(&strm, Z_NO_FLUSH);
-            if (ret != Z_OK && ret != Z_STREAM_END)
-                throw formatted_error("inflate returned {}.", ret);
+            strm.bzalloc = nullptr;
+            strm.bzfree = nullptr;
+            strm.opaque = nullptr;
 
-            if (strm.avail_out == 0 || ret == Z_STREAM_END) {
-                DWORD written;
+            ret = BZ2_bzDecompressInit(&strm, 0, 0);
+            if (ret != BZ_OK)
+                throw formatted_error("BZ2_bzDecompressInit returned {}.", ret);
 
-                if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
-                    throw last_error("WriteFile", GetLastError());
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
+
+            while (true) {
+                if (strm.avail_in == 0) {
+                    ULONG read;
+
+                    strm.next_in = inbuf;
+
+                    hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                    if (FAILED(hr))
+                        throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        break;
+                }
+
+                ret = BZ2_bzDecompress(&strm);
+                if (ret != BZ_OK && ret != BZ_STREAM_END)
+                    throw formatted_error("BZ2_bzDecompress returned {}.", ret);
+
+                if (strm.avail_out == 0 || ret == BZ_STREAM_END) {
+                    DWORD written;
+
+                    if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                        throw last_error("WriteFile", GetLastError());
+                }
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+
+                if (ret == BZ_STREAM_END)
+                    break;
             }
-
-            if (strm.avail_out == 0) {
-                strm.next_out = outbuf;
-                strm.avail_out = sizeof(outbuf);
-            }
-
-            if (ret == Z_STREAM_END)
-                break;
         }
+
+        // FIXME - xz
+
+        stream.reset(); // close IStream
+
+        // change times to those of original file
+
+        if (!SetFileTime(h.get(), &creation_time, &access_time, &write_time))
+            throw last_error("SetFileTime", GetLastError());
+
+        // FIXME - copy ADSes, extended attributes, and SD?
+    } catch (...) {
+        // FIXME - delete new file
+        throw;
     }
 
-    // FIXME - bzip2
-    // FIXME - xz
-
-    stream.reset(); // close IStream
-
-    // change times to those of original file
-
-    if (!SetFileTime(h.get(), &creation_time, &access_time, &write_time))
-        throw last_error("SetFileTime", GetLastError());
-
-    // FIXME - copy ADSes, extended attributes, and SD?
     // FIXME - delete original file
 }
 
