@@ -306,9 +306,13 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
             sh = (SHITEMID*)((uint8_t*)sh + sh->cb);
         }
 
-        auto tis = new tar_item_stream(tar, *item);
+        try {
+            auto tis = new tar_item_stream(tar, *item);
 
-        return tis->QueryInterface(riid, ppv);
+            return tis->QueryInterface(riid, ppv);
+        } catch (...) {
+            return E_FAIL;
+        }
     }
 
     if (riid == IID_IPropertyStoreFactory)
