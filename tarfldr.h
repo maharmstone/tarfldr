@@ -201,6 +201,7 @@ typedef struct {
     DWORD pid;
     std::function<int(const tar_item&, const tar_item&)> compare_func;
     SHCOLSTATEF state;
+    bool tarball_only;
 } header_info;
 
 class shell_enum : public IEnumIDList {
