@@ -384,11 +384,13 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
 
         // FIXME - copy ADSes, extended attributes, and SD?
     } catch (...) {
-        // FIXME - delete new file
+        h.reset();
+        DeleteFileW((WCHAR*)new_fn.c_str());
+
         throw;
     }
 
-    // FIXME - delete original file
+    DeleteFileW((WCHAR*)orig_fn.c_str());
 }
 
 void shell_context_menu::decompress(CMINVOKECOMMANDINFO* pici) {
