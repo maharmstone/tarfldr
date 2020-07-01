@@ -15,6 +15,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <zlib.h>
+#include <bzlib.h>
 
 extern const GUID CLSID_TarFolder;
 
@@ -354,6 +355,7 @@ private:
     tar_item& item;
     std::string buf;
     gzFile gzf = nullptr;
+    BZFILE* bzf = nullptr;
     enum archive_type type;
 };
 

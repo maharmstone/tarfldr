@@ -149,7 +149,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         type = archive_type::tarball;
     } else {
         auto orig_fn = fn2.substr(0, st);
-        size_t size = 0; // FIXME
+        size_t size = 0;
         optional<time_t> mtime = nullopt; // FIXME
 
         if (last_ext == u8"gz")
@@ -183,10 +183,27 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
                 throw last_error("ReadFile", GetLastError());
 
             size = size2;
+        } else if (type == archive_type::bz2) {
+            auto bzf = BZ2_bzopen((char*)fn.u8string().c_str(), "r");
+
+            if (!bzf)
+                throw formatted_error("Could not open bzip2 file {}.", fn.string());
+
+            while (true) {
+                char buf[4096];
+
+                auto ret = BZ2_bzread(bzf, buf, sizeof(buf));
+
+                if (ret <= 0)
+                    break;
+
+                size += ret;
+            }
+
+            BZ2_bzclose(bzf);
         }
 
         add_entry((char*)orig_fn.c_str(), size, mtime, false, nullptr, nullptr, 0);
-
     }
 }
 
@@ -462,6 +479,15 @@ tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item&
             break;
         }
 
+        case archive_type::bz2: {
+            bzf = BZ2_bzopen((char*)tar->archive_fn.u8string().c_str(), "r");
+
+            if (!bzf)
+                throw formatted_error("Could not open bzip2 file {}.", tar->archive_fn.string());
+
+            break;
+        }
+
         default:
             throw runtime_error("FIXME - unsupported archive type"); // FIXME
     }
@@ -473,6 +499,9 @@ tar_item_stream::~tar_item_stream() {
 
     if (gzf)
         gzclose(gzf);
+
+    if (bzf)
+        BZ2_bzclose(bzf);
 }
 
 HRESULT tar_item_stream::QueryInterface(REFIID iid, void** ppv) {
@@ -555,6 +584,17 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
 
             if (ret < 0)
                 throw formatted_error("gzread returned {}.", ret); // FIXME - use gzerror to get actual error
+
+            *pcbRead = ret;
+
+            break;
+        }
+
+        case archive_type::bz2: {
+            auto ret = BZ2_bzread(bzf, pv, cb);
+
+            if (ret < 0)
+                throw formatted_error("BZ2_bzread returned {}.", ret); // FIXME - use BZ2_bzerror to get actual error
 
             *pcbRead = ret;
 
