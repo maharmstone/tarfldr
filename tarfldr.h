@@ -179,6 +179,7 @@ private:
     std::shared_ptr<tar_info> tar;
     tar_item* root;
     PIDLIST_ABSOLUTE root_pidl = nullptr;
+    std::filesystem::path path;
 };
 
 typedef struct {

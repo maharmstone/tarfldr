@@ -133,6 +133,18 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
         parts.pop_back();
     }
 
+    // load file, if not done already
+
+    if (!tar) {
+        try {
+            tar.reset(new tar_info(path));
+
+            root = &tar->root;
+        } catch (...) {
+            return E_FAIL;
+        }
+    }
+
     // loop and compare case-insensitively
 
     tar_item* r = root;
@@ -196,6 +208,16 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
 HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList) {
     debug("shell_folder::EnumObjects({}, {}, {})", (void*)hwnd, grfFlags, (void*)ppenumIDList);
 
+    if (!tar) {
+        try {
+            tar.reset(new tar_info(path));
+
+            root = &tar->root;
+        } catch (...) {
+            return E_FAIL;
+        }
+    }
+
     shell_enum* se = new shell_enum(tar, root, grfFlags);
 
     return se->QueryInterface(IID_IEnumIDList, (void**)ppenumIDList);
@@ -205,6 +227,16 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
     debug("shell_folder::BindToObject({}, {}, {}, {})", (void*)pidl, (void*)pbc, riid, (void*)ppv);
 
     if (riid == IID_IShellFolder) {
+        if (!tar) {
+            try {
+                tar.reset(new tar_info(path));
+
+                root = &tar->root;
+            } catch (...) {
+                return E_FAIL;
+            }
+        }
+
         tar_item* item = root;
 
         if (pidl) {
@@ -242,6 +274,16 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
     } else if (riid == IID_IStream) {
         if (!pidl)
             return E_NOINTERFACE;
+
+        if (!tar) {
+            try {
+                tar.reset(new tar_info(path));
+
+                root = &tar->root;
+            } catch (...) {
+                return E_FAIL;
+            }
+        }
 
         tar_item* item = root;
         const SHITEMID* sh = &pidl->mkid;
@@ -418,6 +460,16 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
     if (!pidl1 || !pidl2)
         return E_INVALIDARG;
 
+    if (!tar) {
+        try {
+            tar.reset(new tar_info(path));
+
+            root = &tar->root;
+        } catch (...) {
+            return E_FAIL;
+        }
+    }
+
     try {
         uint16_t col = lParam & SHCIDS_COLUMNMASK;
         int res;
@@ -450,6 +502,16 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
     if (riid == IID_IShellView) {
         SFV_CREATE sfvc;
 
+        if (!tar) {
+            try {
+                tar.reset(new tar_info(path));
+
+                root = &tar->root;
+            } catch (...) {
+                return E_FAIL;
+            }
+        }
+
         sfvc.cbSize = sizeof(sfvc);
         sfvc.pshf = static_cast<IShellFolder*>(this);
         sfvc.psvOuter = nullptr;
@@ -479,6 +541,16 @@ tar_item& shell_folder::get_item_from_pidl_child(const ITEMID_CHILD* pidl) {
 
 HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SFGAOF* rgfInOut) {
     debug("shell_folder::GetAttributesOf({}, {}, {})", cidl, (void*)apidl, (void*)rgfInOut);
+
+    if (!tar) {
+        try {
+            tar.reset(new tar_info(path));
+
+            root = &tar->root;
+        } catch (...) {
+            return E_FAIL;
+        }
+    }
 
     try {
         SFGAOF common_atts = *rgfInOut;
@@ -510,6 +582,16 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
           (void*)rgfReserved, (void*)ppv);
 
     if (riid == IID_IExtractIconW || riid == IID_IExtractIconA) {
+        if (!tar) {
+            try {
+                tar.reset(new tar_info(path));
+
+                root = &tar->root;
+            } catch (...) {
+                return E_FAIL;
+            }
+        }
+
         try {
             if (cidl != 1)
                 return E_INVALIDARG;
@@ -523,6 +605,16 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
             return E_INVALIDARG;
         }
     } else if (riid == IID_IContextMenu || riid == IID_IDataObject) {
+        if (!tar) {
+            try {
+                tar.reset(new tar_info(path));
+
+                root = &tar->root;
+            } catch (...) {
+                return E_FAIL;
+            }
+        }
+
         try {
             if (cidl == 0)
                 return E_INVALIDARG;
@@ -551,6 +643,16 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
 
 HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRRET* pName) {
     debug("shell_folder::GetDisplayNameOf({}, {}, {})", (void*)pidl, uFlags, (void*)pName);
+
+    if (!tar) {
+        try {
+            tar.reset(new tar_info(path));
+
+            root = &tar->root;
+        } catch (...) {
+            return E_FAIL;
+        }
+    }
 
     try {
         const auto& item = get_item_from_pidl_child(pidl);
@@ -618,6 +720,16 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
 
     if (pscid->fmtid != FMTID_Storage && pscid->fmtid != FMTID_POSIXAttributes)
         return E_NOTIMPL;
+
+    if (!tar) {
+        try {
+            tar.reset(new tar_info(path));
+
+            root = &tar->root;
+        } catch (...) {
+            return E_FAIL;
+        }
+    }
 
     try {
         tar_item& item = get_item_from_pidl_child(pidl);
@@ -835,14 +947,9 @@ HRESULT shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, co
         return E_FAIL;
     }
 
-    try {
-        tar.reset(new tar_info(path));
-    } catch (const exception& e) {
-        debug("shell_folder::InitializeEx: {}", e.what());
-        return E_FAIL;
-    }
+    this->path = path;
 
-    root = &tar->root;
+    tar.reset();
 
     root_pidl = ILCloneFull(pidlRoot);
 
