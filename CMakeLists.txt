@@ -13,6 +13,7 @@ set(SRC_FILES tarfldr.cpp
 	enum.cpp
 	item.cpp
 	menu.cpp
+	stream.cpp
 	tarfldr.rc
 	tarfldr.def)
 
