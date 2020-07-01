@@ -320,16 +320,22 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
         if (pformatetcIn->lindex >= full_itemlist.size())
             return E_INVALIDARG;
 
-        auto tis = new tar_item_stream(tar, *full_itemlist[pformatetcIn->lindex].item);
-        HRESULT hr;
+        try {
+            auto tis = new tar_item_stream(tar, *full_itemlist[pformatetcIn->lindex].item);
+            HRESULT hr;
 
-        pmedium->tymed = TYMED_ISTREAM;
+            pmedium->tymed = TYMED_ISTREAM;
 
-        hr = tis->QueryInterface(IID_IStream, (void**)&pmedium->pstm);
-        if (FAILED(hr))
-            return hr;
+            hr = tis->QueryInterface(IID_IStream, (void**)&pmedium->pstm);
+            if (FAILED(hr)) {
+                delete tis;
+                return hr;
+            }
 
-        pmedium->pUnkForRelease = static_cast<IUnknown*>(tis);
+            pmedium->pUnkForRelease = static_cast<IUnknown*>(tis);
+        } catch (...) {
+            return E_FAIL;
+        }
 
         return S_OK;
     }
