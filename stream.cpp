@@ -13,6 +13,9 @@ tar_item_stream::~tar_item_stream() {
 
     if (bzf)
         BZ2_bzclose(bzf);
+
+    if (type & archive_type::xz)
+        lzma_end(&strm);
 }
 
 HRESULT tar_item_stream::QueryInterface(REFIID iid, void** ppv) {
@@ -113,8 +116,11 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
         }
 
         case archive_type::xz: {
-            while (true) {
-                if (strm.avail_in == 0) {
+            if (lzma_ret == LZMA_STREAM_END)
+                return S_OK;
+
+            do {
+                if (strm.avail_in == 0 && !eof) {
                     DWORD read;
 
                     strm.next_in = (uint8_t*)lzma_inbuf.data();
@@ -125,15 +131,15 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
                     strm.avail_in = read;
 
                     if (read == 0) // end of file
-                        break;
+                        eof = true;
                 }
 
-                auto ret = lzma_code(&strm, LZMA_RUN);
+                lzma_ret = lzma_code(&strm, eof ? LZMA_FINISH : LZMA_RUN);
 
-                if (ret != LZMA_OK && ret != LZMA_STREAM_END)
-                    throw formatted_error("lzma_code returned {}.", ret);
+                if (lzma_ret != LZMA_OK && lzma_ret != LZMA_STREAM_END)
+                    throw formatted_error("lzma_code returned {}.", lzma_ret);
 
-                if (strm.avail_out == 0 || ret == LZMA_STREAM_END) {
+                if (strm.avail_out == 0 || lzma_ret == LZMA_STREAM_END) {
                     size_t read_size = lzma_outbuf.length() - strm.avail_out;
 
                     copy_size = min(read_size, (size_t)cb);
@@ -152,10 +158,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
                     strm.next_out = (uint8_t*)lzma_outbuf.data();
                     strm.avail_out = lzma_outbuf.length();
                 }
-
-                if (ret == LZMA_STREAM_END)
-                    break;
-            }
+            } while (lzma_ret != LZMA_STREAM_END);
 
             break;
         }

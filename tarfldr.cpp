@@ -209,10 +209,11 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         } else if (type & archive_type::xz) {
             uint8_t inbuf[4096], outbuf[4096];
             DWORD read;
+            bool eof = false;
 
             lzma_stream strm = LZMA_STREAM_INIT;
 
-            unique_handle h{CreateFileW((LPCWSTR)fn.u16string().c_str(), GENERIC_READ, 0, nullptr,
+            unique_handle h{CreateFileW((LPCWSTR)fn.u16string().c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
 
             if (h.get() == INVALID_HANDLE_VALUE)
@@ -220,43 +221,47 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
 
             auto ret = lzma_stream_decoder(&strm, UINT64_MAX, 0);
 
-            if (ret != LZMA_OK)
-                throw formatted_error("lzma_stream_decoder returned {}.", ret);
-
-            strm.next_in = nullptr;
-            strm.avail_in = 0;
-            strm.next_out = outbuf;
-            strm.avail_out = sizeof(outbuf);
-
-            while (true) {
-                if (strm.avail_in == 0) {
-                    strm.next_in = inbuf;
-
-                    if (!ReadFile(h.get(), inbuf, sizeof(inbuf), &read, nullptr))
-                        throw last_error("ReadFile", GetLastError());
-
-                    strm.avail_in = read;
-
-                    if (read == 0) // end of file
-                        break;
-                }
-
-                auto ret = lzma_code(&strm, LZMA_RUN);
-
-                if (strm.avail_out == 0 || ret == LZMA_STREAM_END)
-                    size += sizeof(outbuf) - strm.avail_out;
-
-                if (strm.avail_out == 0) {
-                    strm.next_out = outbuf;
-                    strm.avail_out = sizeof(outbuf);
-                }
-
-                if (ret == LZMA_STREAM_END)
-                    break;
-
+            try {
                 if (ret != LZMA_OK)
-                    throw formatted_error("lzma_code returned {}.", ret);
+                    throw formatted_error("lzma_stream_decoder returned {}.", ret);
+
+                strm.next_in = nullptr;
+                strm.avail_in = 0;
+                strm.next_out = outbuf;
+                strm.avail_out = sizeof(outbuf);
+
+                do {
+                    if (strm.avail_in == 0 && !eof) {
+                        strm.next_in = inbuf;
+
+                        if (!ReadFile(h.get(), inbuf, sizeof(inbuf), &read, nullptr))
+                            throw last_error("ReadFile", GetLastError());
+
+                        strm.avail_in = read;
+
+                        if (read == 0) // end of file
+                            eof = true;
+                    }
+
+                    ret = lzma_code(&strm, eof ? LZMA_FINISH : LZMA_RUN);
+
+                    if (ret != LZMA_OK && ret != LZMA_STREAM_END)
+                        throw formatted_error("lzma_code returned {}.", ret);
+
+                    if (strm.avail_out == 0 || ret == LZMA_STREAM_END)
+                        size += sizeof(outbuf) - strm.avail_out;
+
+                    if (strm.avail_out == 0) {
+                        strm.next_out = outbuf;
+                        strm.avail_out = sizeof(outbuf);
+                    }
+                } while (ret != LZMA_STREAM_END);
+            } catch (...) {
+                lzma_end(&strm);
+                throw;
             }
+
+            lzma_end(&strm);
         }
 
         add_entry(utf16_to_utf8(orig_fn).c_str(), size, mtime, false, nullptr, nullptr, 0);

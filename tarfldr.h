@@ -371,6 +371,8 @@ private:
     lzma_stream strm = LZMA_STREAM_INIT;
     std::string lzma_inbuf, lzma_outbuf;
     enum archive_type type;
+    bool eof = false;
+    int lzma_ret = LZMA_OK;
 };
 
 class shell_context_menu;
