@@ -282,6 +282,7 @@ public:
 
     HRESULT open_cmd(CMINVOKECOMMANDINFO* pici);
     HRESULT copy_cmd(CMINVOKECOMMANDINFO* pici);
+    HRESULT properties(CMINVOKECOMMANDINFO* pici);
 
 private:
     HGLOBAL make_shell_id_list();

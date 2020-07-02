@@ -15,7 +15,9 @@ static const struct {
 } menu_items[] = {
     { IDS_OPEN, "open", u"open", &shell_item::open_cmd },
     { 0, nullptr, nullptr, nullptr },
-    { IDS_COPY, "copy", u"copy", &shell_item::copy_cmd }
+    { IDS_COPY, "copy", u"copy", &shell_item::copy_cmd },
+    { 0, nullptr, nullptr, nullptr },
+    { IDS_PROPERTIES, "properties", u"properties", &shell_item::properties }
 };
 
 // FIXME - others: Extract, Cut, Paste, Properties
@@ -202,6 +204,12 @@ HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
     return S_OK;
 }
 
+HRESULT shell_item::properties(CMINVOKECOMMANDINFO* pici) {
+    MessageBoxW(pici->hwnd, L"FIXME - properties", 0, 0); // FIXME
+
+    return S_OK;
+}
+
 HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
@@ -235,8 +243,23 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
 
     span mi = menu_items;
 
-    if (idCmd >= mi.size())
-        return E_INVALIDARG;
+    if (!IS_INTRESOURCE(idCmd)) {
+        bool found = false;
+
+        for (unsigned int i = 0; i < mi.size(); i++) {
+            if (mi[i].verba == (char*)idCmd) {
+                idCmd = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            return E_INVALIDARG;
+    } else {
+        if (idCmd >= mi.size())
+            return E_INVALIDARG;
+    }
 
     switch (uType) {
         case GCS_VALIDATEA:
