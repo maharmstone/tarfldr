@@ -19,6 +19,7 @@ STRINGTABLE
     IDS_COMPRESS		"&Compress"
     IDS_COMPRESS_GZIP	"As &gzip"
     IDS_COMPRESS_BZ2	"As &bz2"
+    IDS_COMPRESS_XZ 	"As &xz"
 }
 
 IDI_TAR_ICON ICON tar.ico

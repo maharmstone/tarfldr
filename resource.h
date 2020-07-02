@@ -19,3 +19,4 @@
 #define IDS_COMPRESS                   115
 #define IDS_COMPRESS_GZIP              116
 #define IDS_COMPRESS_BZ2               117
+#define IDS_COMPRESS_XZ                118

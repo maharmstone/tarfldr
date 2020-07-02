@@ -463,6 +463,8 @@ static void compress_file(ITEMIDLIST* pidl, archive_type type) {
         new_fn += u".gz";
     else if (type & archive_type::bz2)
         new_fn += u".bz2";
+    else if (type & archive_type::xz)
+        new_fn += u".xz";
 
     unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), GENERIC_WRITE, 0, nullptr,
                     CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)};
@@ -577,9 +579,61 @@ static void compress_file(ITEMIDLIST* pidl, archive_type type) {
                     strm.avail_out = sizeof(outbuf);
                 }
             } while (ret != BZ_STREAM_END);
-        }
+        } else if (type & archive_type::xz) {
+            int ret;
+            lzma_stream strm = LZMA_STREAM_INIT;
+            uint8_t inbuf[4096], outbuf[4096];
+            bool eof = false;
 
-        // FIXME - xz
+            ret = lzma_easy_encoder(&strm, 9, LZMA_CHECK_CRC64);
+            if (ret != LZMA_OK)
+                throw formatted_error("lzma_easy_encoder returned {}.", ret);
+
+            try {
+                strm.next_in = nullptr;
+                strm.avail_in = 0;
+                strm.next_out = outbuf;
+                strm.avail_out = sizeof(outbuf);
+
+                do {
+                    if (strm.avail_in == 0 && !eof) {
+                        ULONG read;
+
+                        strm.next_in = inbuf;
+
+                        hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                        if (FAILED(hr))
+                            throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+
+                        strm.avail_in = read;
+
+                        if (read == 0) // end of file
+                            eof = true;
+                    }
+
+                    ret = lzma_code(&strm, eof ? LZMA_FINISH : LZMA_RUN);
+                    if (ret != LZMA_OK && ret != LZMA_STREAM_END)
+                        throw formatted_error("lzma_code returned {}.", ret);
+
+                    if (strm.avail_out == 0 || eof) {
+                        DWORD written;
+
+                        if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                            throw last_error("WriteFile", GetLastError());
+                    }
+
+                    if (strm.avail_out == 0) {
+                        strm.next_out = outbuf;
+                        strm.avail_out = sizeof(outbuf);
+                    }
+                } while (ret != LZMA_STREAM_END);
+            } catch (...) {
+                lzma_end(&strm);
+                throw;
+            }
+
+            lzma_end(&strm);
+        }
 
         stream.reset(); // close IStream
 
@@ -777,6 +831,9 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
         }, true);
         items.emplace_back(IDS_COMPRESS_BZ2, "compress_bz2", u"compress_bz2", [](shell_context_menu* scm, CMINVOKECOMMANDINFO* pici) {
             scm->compress(pici, archive_type::bz2);
+        }, true);
+        items.emplace_back(IDS_COMPRESS_XZ, "compress_xz", u"compress_xz", [](shell_context_menu* scm, CMINVOKECOMMANDINFO* pici) {
+            scm->compress(pici, archive_type::xz);
         }, true);
     }
 
