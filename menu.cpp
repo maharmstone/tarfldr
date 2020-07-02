@@ -172,7 +172,7 @@ static void decompress_file(ITEMIDLIST* pidl, archive_type type) {
     }
 
     {
-        unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), READ_ATTRIBUTES, 0, nullptr,
+        unique_handle h{CreateFileW((LPCWSTR)orig_fn.c_str(), READ_ATTRIBUTES, 0, nullptr,
                                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
 
         if (h.get() == INVALID_HANDLE_VALUE)
@@ -404,6 +404,149 @@ void shell_context_menu::decompress(CMINVOKECOMMANDINFO* pici) {
     }
 }
 
+static void compress_file(ITEMIDLIST* pidl, archive_type type) {
+    HRESULT hr;
+    com_object<IShellItem> isi;
+    com_object<IStream> stream;
+    u16string orig_fn, new_fn;
+    FILETIME creation_time, access_time, write_time;
+
+    {
+        WCHAR buf[MAX_PATH];
+
+        if (!SHGetPathFromIDListW(pidl, (WCHAR*)buf))
+            throw runtime_error("SHGetPathFromIDList failed");
+
+        orig_fn = new_fn = (char16_t*)buf;
+    }
+
+    {
+        unique_handle h{CreateFileW((LPCWSTR)orig_fn.c_str(), READ_ATTRIBUTES, 0, nullptr,
+                                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+        if (h.get() == INVALID_HANDLE_VALUE)
+            throw last_error("CreateFile", GetLastError());
+
+        if (!GetFileTime(h.get(), &creation_time, &access_time, &write_time))
+            throw last_error("GetFileTime", GetLastError());
+    }
+
+    {
+        IShellItem* tmp;
+
+        hr = SHCreateItemFromIDList(pidl, IID_IShellItem, (void**)&tmp);
+        if (FAILED(hr))
+            throw formatted_error("SHCreateItemFromIDList returned {:08x}.", (uint32_t)hr);
+
+        isi.reset(tmp);
+    }
+
+    {
+        IStream* tmp;
+
+        hr = isi->BindToHandler(nullptr, BHID_Stream, IID_IStream, (void**)&tmp);
+        if (FAILED(hr))
+            throw formatted_error("IShellItem::BindToHandler returned {:08x}.", (uint32_t)hr);
+
+        stream.reset(tmp);
+    }
+
+    new_fn += u".bz2";
+
+    unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), GENERIC_WRITE, 0, nullptr,
+                    CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+    if (h.get() == INVALID_HANDLE_VALUE)
+        throw last_error("CreateFile", GetLastError());
+
+    try {
+        if (type & archive_type::bz2) {
+            int ret;
+            bz_stream strm;
+            char inbuf[4096], outbuf[4096];
+            bool eof = false;
+
+            // FIXME - can we do this via IStream rather than CreateFile etc.?
+
+            strm.bzalloc = nullptr;
+            strm.bzfree = nullptr;
+            strm.opaque = nullptr;
+
+            ret = BZ2_bzCompressInit(&strm, 9, 0, 30);
+            if (ret != BZ_OK)
+                throw formatted_error("BZ2_bzCompressInit returned {}.", ret);
+
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
+
+            do {
+                if (strm.avail_in == 0 && !eof) {
+                    ULONG read;
+
+                    strm.next_in = inbuf;
+
+                    hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                    if (FAILED(hr))
+                        throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        eof = true;
+                }
+
+                ret = BZ2_bzCompress(&strm, eof ? BZ_FINISH : BZ_RUN);
+                if (ret != BZ_RUN_OK && ret != BZ_FINISH_OK && ret != BZ_STREAM_END)
+                    throw formatted_error("BZ2_bzCompress returned {}.", ret);
+
+                if (strm.avail_out == 0 || eof) {
+                    DWORD written;
+
+                    if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                        throw last_error("WriteFile", GetLastError());
+                }
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+            } while (ret != BZ_STREAM_END);
+        }
+
+        // FIXME - gzip
+        // FIXME - xz
+
+        stream.reset(); // close IStream
+
+        // change times to those of original file
+
+        if (!SetFileTime(h.get(), &creation_time, &access_time, &write_time))
+            throw last_error("SetFileTime", GetLastError());
+
+        // FIXME - copy ADSes, extended attributes, and SD?
+    } catch (...) {
+        h.reset();
+        DeleteFileW((WCHAR*)new_fn.c_str());
+
+        throw;
+    }
+
+    DeleteFileW((WCHAR*)orig_fn.c_str());
+}
+
+void shell_context_menu::compress(CMINVOKECOMMANDINFO* pici) {
+    try {
+        for (const auto& file : files) {
+            if (!(get<1>(file) & archive_type::gzip || get<1>(file) & archive_type::bz2 || get<1>(file) & archive_type::xz))
+                compress_file((ITEMIDLIST*)get<0>(file).data(), archive_type::bz2); // FIXME - type selection
+        }
+    } catch (const exception& e) {
+        MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+    }
+}
+
 HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
@@ -478,7 +621,7 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     CIDA* cida;
     STGMEDIUM stgm;
     WCHAR path[MAX_PATH];
-    bool show_extract_all = false, show_decompress = false;
+    bool show_extract_all = false, show_decompress = false, show_compress = false;
 
     if (pidlFolder || !pdtobj)
         return E_INVALIDARG;
@@ -552,6 +695,8 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
 
         if (type & archive_type::gzip || type & archive_type::bz2 || type & archive_type::xz)
             show_decompress = true;
+        else
+            show_compress = true;
 
         CoTaskMemFree(buf);
     }
@@ -561,6 +706,9 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
 
     if (show_decompress)
         items.emplace_back(IDS_DECOMPRESS, "decompress", u"decompress", shell_context_menu::decompress);
+
+    if (show_compress)
+        items.emplace_back(IDS_COMPRESS, "compress", u"compress", shell_context_menu::compress);
 
     return S_OK;
 }

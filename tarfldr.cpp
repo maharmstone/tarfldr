@@ -368,6 +368,9 @@ extern "C" HRESULT DllRegisterServer() {
             create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\ShellEx\\ContextMenuHandlers\\tarfldr"s, clsid_menu);
         }
 
+        create_reg_key(HKEY_CLASSES_ROOT, u"*\\ShellEx\\ContextMenuHandlers");
+        create_reg_key(HKEY_CLASSES_ROOT, u"*\\ShellEx\\ContextMenuHandlers\\tarfldr", clsid_menu);
+
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid, get<0>(prog_ids[0]));
         create_reg_key(HKEY_CLASSES_ROOT, u"CLSID\\" + clsid + u"\\DefaultIcon", file + u",0"s);
 
@@ -412,6 +415,8 @@ extern "C" HRESULT DllUnregisterServer() {
         for (const auto& prog_id : prog_ids) {
             delete_reg_tree(HKEY_CLASSES_ROOT, get<0>(prog_id));
         }
+
+        delete_reg_tree(HKEY_CLASSES_ROOT, u"*\\ShellEx\\ContextMenuHandlers\\tarfldr");
 
         return S_OK;
     } catch (const exception& e) {

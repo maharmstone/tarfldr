@@ -408,6 +408,7 @@ public:
 
     void extract_all(CMINVOKECOMMANDINFO* pici);
     void decompress(CMINVOKECOMMANDINFO* pici);
+    void compress(CMINVOKECOMMANDINFO* pici);
 
 private:
     LONG refcount = 0;
