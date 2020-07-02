@@ -147,11 +147,12 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
                     memcpy(pv, lzma_outbuf.data(), copy_size);
 
                     pv = (uint8_t*)pv + copy_size;
-                    cb -= copy_size;
                     *pcbRead += copy_size;
 
                     if (read_size > cb)
                         buf.append(string_view(lzma_outbuf).substr(cb, read_size - cb));
+
+                    cb -= copy_size;
                 }
 
                 if (strm.avail_out == 0) {
