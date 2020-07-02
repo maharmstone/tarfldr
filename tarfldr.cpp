@@ -494,11 +494,11 @@ void tar_item::find_child(const std::u16string_view& name, tar_item** ret) {
 }
 
 SFGAOF tar_item::get_atts() const {
-    SFGAOF atts = SFGAO_CANCOPY;
+    SFGAOF atts = SFGAO_CANCOPY | SFGAO_HASPROPSHEET;
 
     if (dir) {
         atts |= SFGAO_FOLDER | SFGAO_BROWSABLE;
-        atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this
+        atts |= SFGAO_HASSUBFOLDER; // FIXME - check for this?
     } else
         atts |= SFGAO_STREAM;
 
