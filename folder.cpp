@@ -141,7 +141,6 @@ HRESULT shell_folder::ParseDisplayName(HWND hwnd, IBindCtx* pbc, LPWSTR pszDispl
 
             root = &tar->root;
         } catch (const exception& e) {
-            MessageBoxW(hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
             return E_FAIL;
         }
     }
@@ -215,7 +214,6 @@ HRESULT shell_folder::EnumObjects(HWND hwnd, SHCONTF grfFlags, IEnumIDList** ppe
 
             root = &tar->root;
         } catch (const exception& e) {
-            MessageBoxW(hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
             return E_FAIL;
         }
     }
@@ -235,7 +233,6 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
 
                 root = &tar->root;
             } catch (const exception& e) {
-                MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
                 return E_FAIL;
             }
         }
@@ -284,7 +281,6 @@ HRESULT shell_folder::BindToObject(PCUIDLIST_RELATIVE pidl, IBindCtx* pbc, REFII
 
                 root = &tar->root;
             } catch (const exception& e) {
-                MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
                 return E_FAIL;
             }
         }
@@ -474,7 +470,6 @@ HRESULT shell_folder::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDL
 
             root = &tar->root;
         } catch (const exception& e) {
-            MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
             return E_FAIL;
         }
     }
@@ -517,7 +512,6 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
 
                 root = &tar->root;
             } catch (const exception& e) {
-                MessageBoxW(hwndOwner, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
                 return E_FAIL;
             }
         }
@@ -558,7 +552,6 @@ HRESULT shell_folder::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY apidl, SF
 
             root = &tar->root;
         } catch (const exception& e) {
-            MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
             return E_FAIL;
         }
     }
@@ -599,7 +592,6 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
 
                 root = &tar->root;
             } catch (const exception& e) {
-                MessageBoxW(hwndOwner, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
                 return E_FAIL;
             }
         }
@@ -623,7 +615,6 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
 
                 root = &tar->root;
             } catch (const exception& e) {
-                MessageBoxW(hwndOwner, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
                 return E_FAIL;
             }
         }
@@ -663,7 +654,6 @@ HRESULT shell_folder::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uFlags, STRR
 
             root = &tar->root;
         } catch (const exception& e) {
-            MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
             return E_FAIL;
         }
     }
@@ -732,7 +722,6 @@ HRESULT shell_folder::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF* pcsFlags)
 
                 root = &tar->root;
             } catch (const exception& e) {
-                MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
                 return E_FAIL;
             }
         }
@@ -759,7 +748,6 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
 
             root = &tar->root;
         } catch (const exception& e) {
-            MessageBoxW(nullptr, (WCHAR*)utf8_to_utf16(e.what()).c_str(), nullptr, MB_ICONERROR);
             return E_FAIL;
         }
     }
