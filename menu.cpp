@@ -40,6 +40,7 @@ ULONG shell_context_menu::Release() {
 HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags) {
     UINT cmd = idCmdFirst;
     MENUITEMINFOW mii;
+    HMENU submenu = nullptr;
 
     debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
@@ -58,7 +59,14 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
             mii.fType = MFT_STRING;
             mii.dwTypeData = buf;
 
-            InsertMenuItemW(hmenu, indexMenu + i, true, &mii);
+            if (items[i].verba == "compress") {
+                submenu = CreatePopupMenu();
+
+                mii.fMask |= MIIM_SUBMENU;
+                mii.hSubMenu = submenu;
+            }
+
+            InsertMenuItemW(items[i].sub_item ? submenu : hmenu, indexMenu + i, true, &mii);
             cmd++;
         }
     }
@@ -536,11 +544,11 @@ static void compress_file(ITEMIDLIST* pidl, archive_type type) {
     DeleteFileW((WCHAR*)orig_fn.c_str());
 }
 
-void shell_context_menu::compress(CMINVOKECOMMANDINFO* pici) {
+void shell_context_menu::compress(CMINVOKECOMMANDINFO* pici, archive_type type) {
     try {
         for (const auto& file : files) {
             if (!(get<1>(file) & archive_type::gzip || get<1>(file) & archive_type::bz2 || get<1>(file) & archive_type::xz))
-                compress_file((ITEMIDLIST*)get<0>(file).data(), archive_type::bz2); // FIXME - type selection
+                compress_file((ITEMIDLIST*)get<0>(file).data(), type);
         }
     } catch (const exception& e) {
         MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
@@ -702,13 +710,17 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
     }
 
     if (show_extract_all)
-        items.emplace_back(IDS_EXTRACT_ALL, "extract", u"extract", shell_context_menu::extract_all);
+        items.emplace_back(IDS_EXTRACT_ALL, "extract", u"extract", shell_context_menu::extract_all, false);
 
     if (show_decompress)
-        items.emplace_back(IDS_DECOMPRESS, "decompress", u"decompress", shell_context_menu::decompress);
+        items.emplace_back(IDS_DECOMPRESS, "decompress", u"decompress", shell_context_menu::decompress, false);
 
-    if (show_compress)
-        items.emplace_back(IDS_COMPRESS, "compress", u"compress", shell_context_menu::compress);
+    if (show_compress) {
+        items.emplace_back(IDS_COMPRESS, "compress", u"compress", nullptr, false);
+        items.emplace_back(IDS_COMPRESS_BZ2, "compress_bz2", u"compress_bz2", [](shell_context_menu* scm, CMINVOKECOMMANDINFO* pici) {
+            scm->compress(pici, archive_type::bz2);
+        }, true);
+    }
 
     return S_OK;
 }

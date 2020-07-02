@@ -17,3 +17,4 @@
 #define IDI_COMPRESSED_ICON            113
 #define IDS_DECOMPRESS                 114
 #define IDS_COMPRESS                   115
+#define IDS_COMPRESS_BZ2               116

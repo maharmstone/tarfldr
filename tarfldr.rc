@@ -4,19 +4,20 @@ LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 
 STRINGTABLE
 {
-    IDS_OPEN		"&Open"
-    IDS_COPY		"&Copy"
-    IDS_NAME		"Name"
-    IDS_SIZE		"Size"
-    IDS_TYPE		"Type"
-    IDS_MODIFIED	"Date modified"
-    IDS_USER	    "User"
-    IDS_GROUP	    "Group"
-    IDS_MODE	    "Mode"
-    IDS_EXTRACT_ALL "E&xtract All..."
-    IDS_EXTRACT_TEXT "Choose a destination for the contents of the archive."
-    IDS_DECOMPRESS  "&Decompress"
-    IDS_COMPRESS    "&Compress"
+    IDS_OPEN			"&Open"
+    IDS_COPY			"&Copy"
+    IDS_NAME			"Name"
+    IDS_SIZE			"Size"
+    IDS_TYPE			"Type"
+    IDS_MODIFIED		"Date modified"
+    IDS_USER			"User"
+    IDS_GROUP			"Group"
+    IDS_MODE			"Mode"
+    IDS_EXTRACT_ALL		"E&xtract All..."
+    IDS_EXTRACT_TEXT	"Choose a destination for the contents of the archive."
+    IDS_DECOMPRESS		"&Decompress"
+    IDS_COMPRESS		"&Compress"
+    IDS_COMPRESS_BZ2	"As &bz2"
 }
 
 IDI_TAR_ICON ICON tar.ico

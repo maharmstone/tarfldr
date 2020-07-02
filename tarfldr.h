@@ -378,14 +378,15 @@ class shell_context_menu;
 class shell_context_menu_item {
 public:
     shell_context_menu_item(unsigned int res_num, const std::string_view& verba, const std::u16string_view& verbw,
-                            const std::function<void(shell_context_menu*, CMINVOKECOMMANDINFO*)>& cmd) :
-                            res_num(res_num), verba(verba), verbw(verbw), cmd(cmd) {
+                            const std::function<void(shell_context_menu*, CMINVOKECOMMANDINFO*)>& cmd, bool sub_item) :
+                            res_num(res_num), verba(verba), verbw(verbw), cmd(cmd), sub_item(sub_item) {
     }
 
     unsigned int res_num;
     std::string verba;
     std::u16string verbw;
     std::function<void(shell_context_menu*, CMINVOKECOMMANDINFO*)> cmd;
+    bool sub_item;
 };
 
 class shell_context_menu : public IContextMenu, public IShellExtInit {
@@ -408,7 +409,7 @@ public:
 
     void extract_all(CMINVOKECOMMANDINFO* pici);
     void decompress(CMINVOKECOMMANDINFO* pici);
-    void compress(CMINVOKECOMMANDINFO* pici);
+    void compress(CMINVOKECOMMANDINFO* pici, archive_type type);
 
 private:
     LONG refcount = 0;
