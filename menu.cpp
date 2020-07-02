@@ -459,7 +459,10 @@ static void compress_file(ITEMIDLIST* pidl, archive_type type) {
         stream.reset(tmp);
     }
 
-    new_fn += u".bz2";
+    if (type & archive_type::gzip)
+        new_fn += u".gz";
+    else if (type & archive_type::bz2)
+        new_fn += u".bz2";
 
     unique_handle h{CreateFileW((LPCWSTR)new_fn.c_str(), GENERIC_WRITE, 0, nullptr,
                     CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)};
@@ -468,13 +471,66 @@ static void compress_file(ITEMIDLIST* pidl, archive_type type) {
         throw last_error("CreateFile", GetLastError());
 
     try {
-        if (type & archive_type::bz2) {
+        if (type & archive_type::gzip) {
+            int ret;
+            z_stream strm;
+            uint8_t inbuf[4096], outbuf[4096];
+            bool eof = false;
+
+            // FIXME - can we do this via IStream rather than CreateFile etc.?
+
+            strm.zalloc = Z_NULL;
+            strm.zfree = Z_NULL;
+            strm.opaque = Z_NULL;
+
+            ret = deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, MAX_WBITS + 16, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
+            if (ret != Z_OK)
+                throw formatted_error("deflateInit returned {}.", ret);
+
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
+
+            do {
+                if (strm.avail_in == 0 && !eof) {
+                    ULONG read;
+
+                    strm.next_in = inbuf;
+
+                    hr = stream->Read(inbuf, sizeof(inbuf), &read);
+                    if (FAILED(hr))
+                        throw formatted_error("IStream::Read returned {:08x}.", (uint32_t)hr);
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        eof = true;
+                }
+
+                ret = deflate(&strm, eof ? Z_FINISH : Z_NO_FLUSH);
+                if (ret != Z_OK && ret != Z_STREAM_END)
+                    throw formatted_error("deflate returned {}.", ret);
+
+                if (strm.avail_out == 0 || eof) {
+                    DWORD written;
+
+                    if (!WriteFile(h.get(), outbuf, sizeof(outbuf) - strm.avail_out, &written, nullptr))
+                        throw last_error("WriteFile", GetLastError());
+                }
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+            } while (ret != Z_STREAM_END);
+
+            deflateEnd(&strm);
+        } else if (type & archive_type::bz2) {
             int ret;
             bz_stream strm;
             char inbuf[4096], outbuf[4096];
             bool eof = false;
-
-            // FIXME - can we do this via IStream rather than CreateFile etc.?
 
             strm.bzalloc = nullptr;
             strm.bzfree = nullptr;
@@ -523,7 +579,6 @@ static void compress_file(ITEMIDLIST* pidl, archive_type type) {
             } while (ret != BZ_STREAM_END);
         }
 
-        // FIXME - gzip
         // FIXME - xz
 
         stream.reset(); // close IStream
@@ -717,6 +772,9 @@ HRESULT shell_context_menu::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject
 
     if (show_compress) {
         items.emplace_back(IDS_COMPRESS, "compress", u"compress", nullptr, false);
+        items.emplace_back(IDS_COMPRESS_GZIP, "compress_gzip", u"compress_gzip", [](shell_context_menu* scm, CMINVOKECOMMANDINFO* pici) {
+            scm->compress(pici, archive_type::gzip);
+        }, true);
         items.emplace_back(IDS_COMPRESS_BZ2, "compress_bz2", u"compress_bz2", [](shell_context_menu* scm, CMINVOKECOMMANDINFO* pici) {
             scm->compress(pici, archive_type::bz2);
         }, true);

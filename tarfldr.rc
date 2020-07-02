@@ -17,6 +17,7 @@ STRINGTABLE
     IDS_EXTRACT_TEXT	"Choose a destination for the contents of the archive."
     IDS_DECOMPRESS		"&Decompress"
     IDS_COMPRESS		"&Compress"
+    IDS_COMPRESS_GZIP	"As &gzip"
     IDS_COMPRESS_BZ2	"As &bz2"
 }
 
