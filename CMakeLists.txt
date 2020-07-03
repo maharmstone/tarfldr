@@ -26,7 +26,7 @@ target_include_directories(tarfldr PUBLIC "${LibArchive_INCLUDE_DIR}")
 
 set_target_properties(tarfldr PROPERTIES PREFIX "")
 
-target_link_libraries(tarfldr comctl32)
+target_link_libraries(tarfldr comctl32 shlwapi)
 target_link_libraries(tarfldr fmt::fmt-header-only)
 target_link_libraries(tarfldr libarchive.a libbz2.a libxml2.a libz.a liblzma.a)
 target_link_libraries(tarfldr ws2_32)

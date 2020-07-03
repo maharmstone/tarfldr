@@ -290,6 +290,7 @@ public:
     HRESULT properties(CMINVOKECOMMANDINFO* pici);
     INT_PTR PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     std::u16string get_item_prop(tar_item& item, const GUID& guid, DWORD pid);
+    uint64_t calc_size();
 
 private:
     HGLOBAL make_shell_id_list();

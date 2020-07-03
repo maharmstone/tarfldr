@@ -1,5 +1,6 @@
 #include "tarfldr.h"
 #include "resource.h"
+#include <shlwapi.h>
 #include <strsafe.h>
 #include <shlobj.h>
 #include <ntquery.h>
@@ -251,11 +252,38 @@ u16string shell_item::get_item_prop(tar_item& item, const GUID& fmtid, DWORD pid
     return val;
 }
 
+static uint64_t calc_size_dir(const tar_item& item) {
+    uint64_t size = 0;
+
+    for (const auto& c : item.children) {
+        if (c.dir)
+            size += calc_size_dir(c);
+        else
+            size += c.size;
+    }
+
+    return size;
+}
+
+uint64_t shell_item::calc_size() {
+    uint64_t size = 0;
+
+    for (auto item : itemlist) {
+        if (item->dir)
+            size += calc_size_dir(*item);
+        else
+            size += item->size;
+    }
+
+    return size;
+}
+
 INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_INITDIALOG: {
             HRESULT hr;
             u16string multiple, type, modified, user, group, mode;
+            uint64_t size = calc_size();
 
             // FIXME - IDC_ICON
 
@@ -300,7 +328,16 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             SetDlgItemTextW(hwndDlg, IDC_MODIFIED, (WCHAR*)modified.c_str());
 
             SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
-            SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, L"test"); // FIXME - IDC_FILE_SIZE
+
+            {
+                char16_t sizestr[50];
+
+                sizestr[0] = 0;
+
+                StrFormatByteSizeW(size, (WCHAR*)sizestr, sizeof(sizestr) / sizeof(char16_t));
+
+                SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, (WCHAR*)sizestr);
+            }
 
             for (unsigned int i = 0; i < itemlist.size(); i++) {
                 auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_USER);
