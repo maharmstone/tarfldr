@@ -249,7 +249,7 @@ public:
 class shell_item : public IContextMenu, public IDataObject {
 public:
     shell_item(PIDLIST_ABSOLUTE root_pidl, const std::shared_ptr<tar_info>& tar,
-               const std::vector<tar_item*>& itemlist, tar_item* root, bool recursive);
+               const std::vector<tar_item*>& itemlist, tar_item* root, bool recursive, shell_folder* folder);
     virtual ~shell_item();
 
     // IUnknown
@@ -299,6 +299,7 @@ private:
     CLIPFORMAT cf_shell_id_list, cf_file_contents, cf_file_descriptor;
     tar_item* root;
     bool recursive;
+    shell_folder* folder;
 };
 
 struct data_format {

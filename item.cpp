@@ -2,6 +2,7 @@
 #include "resource.h"
 #include <strsafe.h>
 #include <shlobj.h>
+#include <ntquery.h>
 #include <span>
 #include <functional>
 
@@ -23,17 +24,23 @@ static const struct {
 // FIXME - others: Extract, Cut, Paste, Properties
 
 shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
-                       const vector<tar_item*>& itemlist, tar_item* root, bool recursive) :
-                       tar(tar), itemlist(itemlist), root(root), recursive(recursive) {
+                       const vector<tar_item*>& itemlist, tar_item* root, bool recursive, shell_folder* folder) :
+                       tar(tar), itemlist(itemlist), root(root), recursive(recursive), folder(folder) {
     this->root_pidl = ILCloneFull(root_pidl);
     cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
     cf_file_contents = RegisterClipboardFormatW(CFSTR_FILECONTENTS);
     cf_file_descriptor = RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW);
+
+    if (folder)
+        folder->AddRef();
 }
 
 shell_item::~shell_item() {
     if (root_pidl)
         ILFree(root_pidl);
+
+    if (folder)
+        folder->Release();
 }
 
 HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
@@ -207,7 +214,8 @@ HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
 INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_INITDIALOG: {
-            u16string multiple;
+            HRESULT hr;
+            u16string multiple, type;
 
             // FIXME - IDC_ICON
 
@@ -225,7 +233,43 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             else
                 SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)multiple.c_str());
 
-            SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, L"test"); // FIXME - IDC_FILE_TYPE
+            for (unsigned int i = 0; i < itemlist.size(); i++) {
+                u16string val;
+                SHCOLUMNID scid;
+                VARIANT v;
+                auto pidl = itemlist[i]->make_pidl_child();
+
+                VariantInit(&v);
+
+                scid.fmtid = FMTID_Storage;
+                scid.pid = PID_STG_STORAGETYPE;
+
+                hr = folder->GetDetailsEx(pidl, &scid, &v);
+
+                if (FAILED(hr))
+                    val = u"?";
+                else {
+                    hr = VariantChangeType(&v, &v, 0, VT_BSTR);
+
+                    if (FAILED(hr))
+                        val = u"?";
+                    else
+                        val = (char16_t*)v.bstrVal;
+                }
+
+                VariantClear(&v);
+
+                if (i == 0)
+                    type = val;
+                else if (type != val) {
+                    type = multiple;
+                    break;
+                }
+
+                ILFree(pidl);
+            }
+
+            SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, (WCHAR*)type.c_str());
             SetDlgItemTextW(hwndDlg, IDC_MODIFIED, L"test"); // FIXME - IDC_MODIFIED
             SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
             SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, L"test"); // FIXME - IDC_FILE_SIZE
