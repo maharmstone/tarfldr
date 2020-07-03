@@ -279,107 +279,128 @@ uint64_t shell_item::calc_size() {
 }
 
 INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
-        case WM_INITDIALOG: {
-            HRESULT hr;
-            u16string multiple, type, modified, user, group, mode;
-            uint64_t size = calc_size();
+    try {
+        switch (uMsg) {
+            case WM_INITDIALOG: {
+                HRESULT hr;
+                u16string multiple, type, modified, user, group, mode, location;
+                uint64_t size = calc_size();
 
-            // FIXME - IDC_ICON
+                // FIXME - IDC_ICON
 
-            if (itemlist.size() > 1) {
-                char16_t buf[255];
+                if (itemlist.size() > 1) {
+                    char16_t buf[255];
 
-                if (LoadStringW(instance, IDS_MULTIPLE, (WCHAR*)buf, sizeof(buf) / sizeof(char16_t)) <= 0)
-                    throw runtime_error("LoadString failed.");
+                    if (LoadStringW(instance, IDS_MULTIPLE, (WCHAR*)buf, sizeof(buf) / sizeof(char16_t)) <= 0)
+                        throw runtime_error("LoadString failed.");
 
-                multiple = buf;
-            }
-
-            if (itemlist.size() == 1)
-                SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)utf8_to_utf16(itemlist[0]->name).c_str());
-            else
-                SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)multiple.c_str());
-
-            for (unsigned int i = 0; i < itemlist.size(); i++) {
-                auto val = get_item_prop(*itemlist[i], FMTID_Storage, PID_STG_STORAGETYPE);
-
-                if (i == 0)
-                    type = val;
-                else if (type != val) {
-                    type = multiple;
-                    break;
+                    multiple = buf;
                 }
-            }
 
-            SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, (WCHAR*)type.c_str());
+                if (itemlist.size() == 1)
+                    SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)utf8_to_utf16(itemlist[0]->name).c_str());
+                else
+                    SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)multiple.c_str());
 
-            for (unsigned int i = 0; i < itemlist.size(); i++) {
-                auto val = get_item_prop(*itemlist[i], FMTID_Storage, PID_STG_WRITETIME);
+                for (unsigned int i = 0; i < itemlist.size(); i++) {
+                    auto val = get_item_prop(*itemlist[i], FMTID_Storage, PID_STG_STORAGETYPE);
 
-                if (i == 0)
-                    modified = val;
-                else if (modified != val) {
-                    modified = multiple;
-                    break;
+                    if (i == 0)
+                        type = val;
+                    else if (type != val) {
+                        type = multiple;
+                        break;
+                    }
                 }
-            }
 
-            SetDlgItemTextW(hwndDlg, IDC_MODIFIED, (WCHAR*)modified.c_str());
+                SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, (WCHAR*)type.c_str());
 
-            SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
+                for (unsigned int i = 0; i < itemlist.size(); i++) {
+                    auto val = get_item_prop(*itemlist[i], FMTID_Storage, PID_STG_WRITETIME);
 
-            {
-                char16_t sizestr[50];
-
-                sizestr[0] = 0;
-
-                StrFormatByteSizeW(size, (WCHAR*)sizestr, sizeof(sizestr) / sizeof(char16_t));
-
-                SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, (WCHAR*)sizestr);
-            }
-
-            for (unsigned int i = 0; i < itemlist.size(); i++) {
-                auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_USER);
-
-                if (i == 0)
-                    user = val;
-                else if (user != val) {
-                    user = multiple;
-                    break;
+                    if (i == 0)
+                        modified = val;
+                    else if (modified != val) {
+                        modified = multiple;
+                        break;
+                    }
                 }
-            }
 
-            SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, (WCHAR*)user.c_str());
+                SetDlgItemTextW(hwndDlg, IDC_MODIFIED, (WCHAR*)modified.c_str());
 
-            for (unsigned int i = 0; i < itemlist.size(); i++) {
-                auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_GROUP);
+                if (root == &tar->root) {
+                    char16_t buf[255];
 
-                if (i == 0)
-                    group = val;
-                else if (group != val) {
-                    group = multiple;
-                    break;
+                    if (LoadStringW(instance, IDS_ARCHIVE_ROOT, (WCHAR*)buf, sizeof(buf) / sizeof(char16_t)) <= 0)
+                        throw runtime_error("LoadString failed.");
+
+                    location = buf;
+                } else {
+                    tar_item* r = root;
+
+                    while (r != &tar->root) {
+                        location = utf8_to_utf16(r->name) + (location.empty() ? u"" : u"/") + location;
+
+                        r = r->parent;
+                    }
                 }
-            }
 
-            SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, (WCHAR*)group.c_str());
+                SetDlgItemTextW(hwndDlg, IDC_LOCATION, (WCHAR*)location.c_str());
 
-            for (unsigned int i = 0; i < itemlist.size(); i++) {
-                auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_MODE);
+                {
+                    char16_t sizestr[50];
 
-                if (i == 0)
-                    mode = val;
-                else if (mode != val) {
-                    mode = multiple;
-                    break;
+                    sizestr[0] = 0;
+
+                    StrFormatByteSizeW(size, (WCHAR*)sizestr, sizeof(sizestr) / sizeof(char16_t));
+
+                    SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, (WCHAR*)sizestr);
                 }
+
+                for (unsigned int i = 0; i < itemlist.size(); i++) {
+                    auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_USER);
+
+                    if (i == 0)
+                        user = val;
+                    else if (user != val) {
+                        user = multiple;
+                        break;
+                    }
+                }
+
+                SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, (WCHAR*)user.c_str());
+
+                for (unsigned int i = 0; i < itemlist.size(); i++) {
+                    auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_GROUP);
+
+                    if (i == 0)
+                        group = val;
+                    else if (group != val) {
+                        group = multiple;
+                        break;
+                    }
+                }
+
+                SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, (WCHAR*)group.c_str());
+
+                for (unsigned int i = 0; i < itemlist.size(); i++) {
+                    auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_MODE);
+
+                    if (i == 0)
+                        mode = val;
+                    else if (mode != val) {
+                        mode = multiple;
+                        break;
+                    }
+                }
+
+                SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, (WCHAR*)mode.c_str());
+
+                break;
             }
-
-            SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, (WCHAR*)mode.c_str());
-
-            break;
         }
+    } catch (const exception& e) {
+        MessageBoxW(hwndDlg, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
     }
 
     return false;

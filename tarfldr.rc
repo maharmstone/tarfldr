@@ -27,6 +27,7 @@ STRINGTABLE
     IDS_PROPERTIES		"&Properties"
     IDS_PROPSHEET_TITLE "General"
     IDS_MULTIPLE		"(Multiple)"
+    IDS_ARCHIVE_ROOT	"(archive root)"
 }
 
 IDI_TAR_ICON ICON tar.ico
