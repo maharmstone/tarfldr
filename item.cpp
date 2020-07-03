@@ -312,8 +312,11 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                     }
 
                     ILFree(apidl[0]);
-                } else {
-                    // FIXME - icon for multiple files
+                } else { // use icon for multiple files
+                    HICON icon = LoadIconW(LoadLibraryW(L"shell32.dll"), MAKEINTRESOURCE(133)); // FIXME - is this constant defined anywhere?
+
+                    if (icon)
+                        SendDlgItemMessageW(hwndDlg, IDC_FILE_ICON, STM_SETICON, (WPARAM)icon, 0);
                 }
 
                 if (itemlist.size() > 1) {
