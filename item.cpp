@@ -211,11 +211,46 @@ HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
     return S_OK;
 }
 
+u16string shell_item::get_item_prop(tar_item& item, const GUID& fmtid, DWORD pid) {
+    HRESULT hr;
+    u16string val;
+    SHCOLUMNID scid;
+    VARIANT v;
+    auto pidl = item.make_pidl_child();
+
+    VariantInit(&v);
+
+    scid.fmtid = fmtid;
+    scid.pid = pid;
+
+    hr = folder->GetDetailsEx(pidl, &scid, &v);
+
+    if (FAILED(hr)) {
+        ILFree(pidl);
+        return u"?";
+    }
+
+    hr = VariantChangeType(&v, &v, 0, VT_BSTR);
+
+    if (FAILED(hr)) {
+        ILFree(pidl);
+        return u"?";
+    }
+
+    val = (char16_t*)v.bstrVal;
+
+    VariantClear(&v);
+
+    ILFree(pidl);
+
+    return val;
+}
+
 INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_INITDIALOG: {
             HRESULT hr;
-            u16string multiple, type;
+            u16string multiple, type, modified;
 
             // FIXME - IDC_ICON
 
@@ -234,30 +269,7 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                 SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)multiple.c_str());
 
             for (unsigned int i = 0; i < itemlist.size(); i++) {
-                u16string val;
-                SHCOLUMNID scid;
-                VARIANT v;
-                auto pidl = itemlist[i]->make_pidl_child();
-
-                VariantInit(&v);
-
-                scid.fmtid = FMTID_Storage;
-                scid.pid = PID_STG_STORAGETYPE;
-
-                hr = folder->GetDetailsEx(pidl, &scid, &v);
-
-                if (FAILED(hr))
-                    val = u"?";
-                else {
-                    hr = VariantChangeType(&v, &v, 0, VT_BSTR);
-
-                    if (FAILED(hr))
-                        val = u"?";
-                    else
-                        val = (char16_t*)v.bstrVal;
-                }
-
-                VariantClear(&v);
+                auto val = get_item_prop(*itemlist[i], FMTID_Storage, PID_STG_STORAGETYPE);
 
                 if (i == 0)
                     type = val;
@@ -265,12 +277,23 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                     type = multiple;
                     break;
                 }
-
-                ILFree(pidl);
             }
 
             SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, (WCHAR*)type.c_str());
-            SetDlgItemTextW(hwndDlg, IDC_MODIFIED, L"test"); // FIXME - IDC_MODIFIED
+
+            for (unsigned int i = 0; i < itemlist.size(); i++) {
+                auto val = get_item_prop(*itemlist[i], FMTID_Storage, PID_STG_WRITETIME);
+
+                if (i == 0)
+                    modified = val;
+                else if (type != val) {
+                    modified = multiple;
+                    break;
+                }
+            }
+
+            SetDlgItemTextW(hwndDlg, IDC_MODIFIED, (WCHAR*)modified.c_str());
+
             SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
             SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, L"test"); // FIXME - IDC_FILE_SIZE
             SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, L"test"); // FIXME - IDC_POSIX_USER

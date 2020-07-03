@@ -284,6 +284,7 @@ public:
     HRESULT copy_cmd(CMINVOKECOMMANDINFO* pici);
     HRESULT properties(CMINVOKECOMMANDINFO* pici);
     INT_PTR PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    std::u16string get_item_prop(tar_item& item, const GUID& guid, DWORD pid);
 
 private:
     HGLOBAL make_shell_id_list();
