@@ -800,18 +800,27 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
         } else if (pscid->fmtid == FMTID_POSIXAttributes) {
             switch (pscid->pid) {
                 case PID_POSIX_USER:
+                    if (!(tar->type & archive_type::tarball))
+                        return E_FAIL;
+
                     pv->vt = VT_BSTR;
                     pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.user).c_str());
 
                     return S_OK;
 
                 case PID_POSIX_GROUP:
+                    if (!(tar->type & archive_type::tarball))
+                        return E_FAIL;
+
                     pv->vt = VT_BSTR;
                     pv->bstrVal = SysAllocString((WCHAR*)utf8_to_utf16(item.group).c_str());
 
                     return S_OK;
 
                 case PID_POSIX_MODE:
+                    if (!(tar->type & archive_type::tarball))
+                        return E_FAIL;
+
                     pv->vt = VT_I4;
                     pv->lVal = item.mode;
 
