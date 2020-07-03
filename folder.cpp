@@ -830,6 +830,26 @@ HRESULT shell_folder::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUMNID* pscid
     return E_FAIL;
 }
 
+u16string mode_to_u16string(mode_t m) {
+    char16_t mode[11];
+
+    mode[0] = __S_ISTYPE(m, __S_IFDIR) ? 'd' : '-';
+    mode[1] = m & 0400 ? 'r' : '-';
+    mode[2] = m & 0200 ? 'w' : '-';
+    mode[3] = m & 0100 ? 'x' : '-';
+    mode[4] = m & 0040 ? 'r' : '-';
+    mode[5] = m & 0020 ? 'w' : '-';
+    mode[6] = m & 0010 ? 'x' : '-';
+    mode[7] = m & 0004 ? 'r' : '-';
+    mode[8] = m & 0002 ? 'w' : '-';
+    mode[9] = m & 0001 ? 'x' : '-';
+    mode[10] = 0;
+
+    // FIXME - sticky bits, char / block devices, links, sockets, etc.
+
+    return mode;
+}
+
 HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS *psd) {
     HRESULT hr;
     SHCOLUMNID col;
@@ -873,26 +893,11 @@ HRESULT shell_folder::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETA
     psd->cxChar = sp[iColumn].cxChar;
     psd->str.uType = STRRET_WSTR;
 
-    if (col.fmtid == FMTID_POSIXAttributes && col.pid == PID_POSIX_MODE) {
-        mode_t m = (mode_t)v.lVal;
-        char16_t mode[11];
+    if (col.fmtid == FMTID_POSIXAttributes && col.pid == PID_POSIX_MODE && v.vt == VT_I4) {
+        auto s = mode_to_u16string((mode_t)v.lVal);
 
-        mode[0] = __S_ISTYPE(m, __S_IFDIR) ? 'd' : '-';
-        mode[1] = m & 0400 ? 'r' : '-';
-        mode[2] = m & 0200 ? 'w' : '-';
-        mode[3] = m & 0100 ? 'x' : '-';
-        mode[4] = m & 0040 ? 'r' : '-';
-        mode[5] = m & 0020 ? 'w' : '-';
-        mode[6] = m & 0010 ? 'x' : '-';
-        mode[7] = m & 0004 ? 'r' : '-';
-        mode[8] = m & 0002 ? 'w' : '-';
-        mode[9] = m & 0001 ? 'x' : '-';
-        mode[10] = 0;
-
-        // FIXME - sticky bits, char / block devices, links, sockets, etc.
-
-        psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc(sizeof(mode));
-        memcpy(psd->str.pOleStr, mode, sizeof(mode));
+        psd->str.pOleStr = (WCHAR*)CoTaskMemAlloc((s.length() + 1) * sizeof(char16_t));
+        memcpy(psd->str.pOleStr, s.c_str(), (s.length() + 1) * sizeof(char16_t));
     } else {
         hr = VariantChangeType(&v, &v, 0, VT_BSTR);
 

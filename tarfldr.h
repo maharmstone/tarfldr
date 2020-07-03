@@ -543,5 +543,8 @@ private:
     std::string msg;
 };
 
+// folder.cpp
+std::u16string mode_to_u16string(mode_t m);
+
 // tarfldr.cpp
 enum archive_type identify_file_type(const std::u16string_view& fn2);

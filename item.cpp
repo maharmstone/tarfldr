@@ -230,14 +230,19 @@ u16string shell_item::get_item_prop(tar_item& item, const GUID& fmtid, DWORD pid
         return u"";
     }
 
-    hr = VariantChangeType(&v, &v, 0, VT_BSTR);
+    if (fmtid == FMTID_POSIXAttributes && pid == PID_POSIX_MODE && v.vt == VT_I4)
+        val = mode_to_u16string((mode_t)v.lVal);
+    else {
+        hr = VariantChangeType(&v, &v, 0, VT_BSTR);
 
-    if (FAILED(hr)) {
-        ILFree(pidl);
-        return u"";
+        if (FAILED(hr)) {
+            ILFree(pidl);
+            VariantClear(&v);
+            return u"";
+        }
+
+        val = (char16_t*)v.bstrVal;
     }
-
-    val = (char16_t*)v.bstrVal;
 
     VariantClear(&v);
 
@@ -250,7 +255,7 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
     switch (uMsg) {
         case WM_INITDIALOG: {
             HRESULT hr;
-            u16string multiple, type, modified, user, group;
+            u16string multiple, type, modified, user, group, mode;
 
             // FIXME - IDC_ICON
 
@@ -323,7 +328,18 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
             SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, (WCHAR*)group.c_str());
 
-            SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, L"test"); // FIXME - IDC_POSIX_MODE
+            for (unsigned int i = 0; i < itemlist.size(); i++) {
+                auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_MODE);
+
+                if (i == 0)
+                    mode = val;
+                else if (mode != val) {
+                    mode = multiple;
+                    break;
+                }
+            }
+
+            SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, (WCHAR*)mode.c_str());
 
             break;
         }
