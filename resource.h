@@ -33,3 +33,4 @@
 #define IDC_POSIX_USER                 128
 #define IDC_POSIX_GROUP                129
 #define IDC_POSIX_MODE                 130
+#define IDS_MULTIPLE                   131

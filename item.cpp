@@ -206,9 +206,25 @@ HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
 
 INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
-        case WM_INITDIALOG:
+        case WM_INITDIALOG: {
+            u16string multiple;
+
             // FIXME - IDC_ICON
-            SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, L"test"); // FIXME - IDC_FILE_NAME
+
+            if (itemlist.size() > 1) {
+                char16_t buf[255];
+
+                if (LoadStringW(instance, IDS_MULTIPLE, (WCHAR*)buf, sizeof(buf) / sizeof(char16_t)) <= 0)
+                    throw runtime_error("LoadString failed.");
+
+                multiple = buf;
+            }
+
+            if (itemlist.size() == 1)
+                SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)utf8_to_utf16(itemlist[0]->name).c_str());
+            else
+                SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, (WCHAR*)multiple.c_str());
+
             SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, L"test"); // FIXME - IDC_FILE_TYPE
             SetDlgItemTextW(hwndDlg, IDC_MODIFIED, L"test"); // FIXME - IDC_MODIFIED
             SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
@@ -216,7 +232,9 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, L"test"); // FIXME - IDC_POSIX_USER
             SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, L"test"); // FIXME - IDC_POSIX_GROUP
             SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, L"test"); // FIXME - IDC_POSIX_MODE
-        break;
+
+            break;
+        }
     }
 
     return false;

@@ -26,6 +26,7 @@ STRINGTABLE
     IDS_COMPRESS_XZ 	"As &xz"
     IDS_PROPERTIES		"&Properties"
     IDS_PROPSHEET_TITLE "General"
+    IDS_MULTIPLE		"(Multiple)"
 }
 
 IDI_TAR_ICON ICON tar.ico
