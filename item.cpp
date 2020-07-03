@@ -286,7 +286,35 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                 u16string multiple, type, modified, user, group, mode, location;
                 uint64_t size = calc_size();
 
-                // FIXME - IDC_ICON
+                if (itemlist.size() == 1) {
+                    IExtractIconW* ieiw;
+                    ITEMIDLIST* apidl[1];
+
+                    apidl[0] = itemlist[0]->make_relative_pidl(root);
+
+                    hr = folder->GetUIObjectOf(hwndDlg, 1, (PCUITEMID_CHILD_ARRAY)apidl, IID_IExtractIconW, nullptr, (void**)&ieiw);
+                    if (!FAILED(hr)) {
+                        WCHAR buf[MAX_PATH];
+                        int index;
+                        UINT flags;
+
+                        hr = ieiw->GetIconLocation(0, buf, sizeof(buf) / sizeof(WCHAR), &index, &flags);
+                        if (!FAILED(hr)) {
+                            HICON icon;
+
+                            hr = ieiw->Extract(buf, index, &icon, nullptr, 32); // FIXME - size?
+
+                            if (!FAILED(hr))
+                                SendDlgItemMessageW(hwndDlg, IDC_FILE_ICON, STM_SETICON, (WPARAM)icon, 0);
+                        }
+
+                        ieiw->Release();
+                    }
+
+                    ILFree(apidl[0]);
+                } else {
+                    // FIXME - icon for multiple files
+                }
 
                 if (itemlist.size() > 1) {
                     char16_t buf[255];
