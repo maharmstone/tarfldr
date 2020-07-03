@@ -8,10 +8,6 @@ using namespace std;
 
 const GUID FMTID_POSIXAttributes = { 0x34379fdd, 0x93be, 0x4490, { 0x98, 0x58, 0x04, 0x5d, 0x2c, 0x12, 0x85, 0xac } };
 
-#define PID_POSIX_USER      2
-#define PID_POSIX_GROUP     3
-#define PID_POSIX_MODE      4
-
 static int name_compare(const tar_item& item1, const tar_item& item2);
 static int size_compare(const tar_item& item1, const tar_item& item2);
 static int type_compare(const tar_item& item1, const tar_item& item2);

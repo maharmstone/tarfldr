@@ -19,6 +19,11 @@
 #include <lzma.h>
 
 extern const GUID CLSID_TarFolder;
+extern const GUID FMTID_POSIXAttributes;
+
+#define PID_POSIX_USER      2
+#define PID_POSIX_GROUP     3
+#define PID_POSIX_MODE      4
 
 extern HINSTANCE instance;
 

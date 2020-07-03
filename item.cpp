@@ -227,14 +227,14 @@ u16string shell_item::get_item_prop(tar_item& item, const GUID& fmtid, DWORD pid
 
     if (FAILED(hr)) {
         ILFree(pidl);
-        return u"?";
+        return u"";
     }
 
     hr = VariantChangeType(&v, &v, 0, VT_BSTR);
 
     if (FAILED(hr)) {
         ILFree(pidl);
-        return u"?";
+        return u"";
     }
 
     val = (char16_t*)v.bstrVal;
@@ -250,7 +250,7 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
     switch (uMsg) {
         case WM_INITDIALOG: {
             HRESULT hr;
-            u16string multiple, type, modified;
+            u16string multiple, type, modified, user, group;
 
             // FIXME - IDC_ICON
 
@@ -286,7 +286,7 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
                 if (i == 0)
                     modified = val;
-                else if (type != val) {
+                else if (modified != val) {
                     modified = multiple;
                     break;
                 }
@@ -296,8 +296,33 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 
             SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
             SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, L"test"); // FIXME - IDC_FILE_SIZE
-            SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, L"test"); // FIXME - IDC_POSIX_USER
-            SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, L"test"); // FIXME - IDC_POSIX_GROUP
+
+            for (unsigned int i = 0; i < itemlist.size(); i++) {
+                auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_USER);
+
+                if (i == 0)
+                    user = val;
+                else if (user != val) {
+                    user = multiple;
+                    break;
+                }
+            }
+
+            SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, (WCHAR*)user.c_str());
+
+            for (unsigned int i = 0; i < itemlist.size(); i++) {
+                auto val = get_item_prop(*itemlist[i], FMTID_POSIXAttributes, PID_POSIX_GROUP);
+
+                if (i == 0)
+                    group = val;
+                else if (group != val) {
+                    group = multiple;
+                    break;
+                }
+            }
+
+            SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, (WCHAR*)group.c_str());
+
             SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, L"test"); // FIXME - IDC_POSIX_MODE
 
             break;
