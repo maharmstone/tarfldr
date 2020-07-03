@@ -283,6 +283,7 @@ public:
     HRESULT open_cmd(CMINVOKECOMMANDINFO* pici);
     HRESULT copy_cmd(CMINVOKECOMMANDINFO* pici);
     HRESULT properties(CMINVOKECOMMANDINFO* pici);
+    INT_PTR PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 private:
     HGLOBAL make_shell_id_list();

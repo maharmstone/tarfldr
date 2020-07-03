@@ -204,10 +204,72 @@ HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
     return S_OK;
 }
 
-HRESULT shell_item::properties(CMINVOKECOMMANDINFO* pici) {
-    MessageBoxW(pici->hwnd, L"FIXME - properties", 0, 0); // FIXME
+INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
+        case WM_INITDIALOG:
+            // FIXME - IDC_ICON
+            SetDlgItemTextW(hwndDlg, IDC_FILE_NAME, L"test"); // FIXME - IDC_FILE_NAME
+            SetDlgItemTextW(hwndDlg, IDC_FILE_TYPE, L"test"); // FIXME - IDC_FILE_TYPE
+            SetDlgItemTextW(hwndDlg, IDC_MODIFIED, L"test"); // FIXME - IDC_MODIFIED
+            SetDlgItemTextW(hwndDlg, IDC_LOCATION, L"test"); // FIXME - IDC_LOCATION
+            SetDlgItemTextW(hwndDlg, IDC_FILE_SIZE, L"test"); // FIXME - IDC_FILE_SIZE
+            SetDlgItemTextW(hwndDlg, IDC_POSIX_USER, L"test"); // FIXME - IDC_POSIX_USER
+            SetDlgItemTextW(hwndDlg, IDC_POSIX_GROUP, L"test"); // FIXME - IDC_POSIX_GROUP
+            SetDlgItemTextW(hwndDlg, IDC_POSIX_MODE, L"test"); // FIXME - IDC_POSIX_MODE
+        break;
+    }
 
-    return S_OK;
+    return false;
+}
+
+static INT_PTR __stdcall PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    shell_item* si;
+
+    if (uMsg == WM_INITDIALOG) {
+        auto psp = (PROPSHEETPAGE*)lParam;
+
+        si = (shell_item*)psp->lParam;
+
+        SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)si);
+    } else
+        si = (shell_item*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+
+    return si->PropSheetDlgProc(hwndDlg, uMsg, wParam, lParam);
+}
+
+HRESULT shell_item::properties(CMINVOKECOMMANDINFO* pici) {
+    try {
+        PROPSHEETPAGEW psp;
+        PROPSHEETHEADERW psh;
+
+        psp.dwSize = sizeof(psp);
+        psp.dwFlags = PSP_USETITLE;
+        psp.hInstance = instance;
+        psp.pszTemplate = MAKEINTRESOURCEW(IDD_PROPSHEET);
+        psp.hIcon = 0;
+        psp.pszTitle = MAKEINTRESOURCEW(IDS_PROPSHEET_TITLE);
+        psp.pfnDlgProc = ::PropSheetDlgProc;
+        psp.pfnCallback = nullptr;
+        psp.lParam = (LPARAM)this;
+
+        memset(&psh, 0, sizeof(PROPSHEETHEADERW));
+
+        psh.dwSize = sizeof(PROPSHEETHEADERW);
+        psh.dwFlags = PSH_PROPSHEETPAGE;
+        psh.hwndParent = pici->hwnd;
+        psh.hInstance = psp.hInstance;
+        psh.pszCaption = L"test"; // FIXME
+        psh.nPages = 1;
+        psh.ppsp = &psp;
+
+        PropertySheetW(&psh);
+
+        return S_OK;
+    } catch (const exception& e) {
+        MessageBoxW(pici->hwnd, (WCHAR*)utf8_to_utf16(e.what()).c_str(), L"Error", MB_ICONERROR);
+
+        return E_FAIL;
+    }
 }
 
 HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {

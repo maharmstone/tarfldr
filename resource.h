@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windef.h>
+#include <winresrc.h>
 
 #define IDS_OPEN                       101
 #define IDS_COPY                       102
@@ -21,3 +22,14 @@
 #define IDS_COMPRESS_BZ2               117
 #define IDS_COMPRESS_XZ                118
 #define IDS_PROPERTIES                 119
+#define IDS_PROPSHEET_TITLE            120
+#define IDD_PROPSHEET                  121
+#define IDC_FILE_ICON                  122
+#define IDC_FILE_NAME                  123
+#define IDC_FILE_TYPE                  124
+#define IDC_MODIFIED                   125
+#define IDC_LOCATION                   126
+#define IDC_FILE_SIZE                  127
+#define IDC_POSIX_USER                 128
+#define IDC_POSIX_GROUP                129
+#define IDC_POSIX_MODE                 130
