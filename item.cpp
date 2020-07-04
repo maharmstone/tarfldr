@@ -456,6 +456,22 @@ HRESULT shell_item_list::properties(CMINVOKECOMMANDINFO* pici) {
     try {
         PROPSHEETPAGEW psp;
         PROPSHEETHEADERW psh;
+        u16string caption;
+
+        {
+            WCHAR buf[256];
+            string name;
+
+            if (LoadStringW(instance, IDS_PROPSHEET_WINDOW, buf, sizeof(buf) / sizeof(WCHAR)) <= 0)
+                return E_FAIL;
+
+            name = itemlist[0]->name;
+
+            if (itemlist.size() > 1)
+                name += ", ...";
+
+            caption = utf8_to_utf16(fmt::format(utf16_to_utf8((char16_t*)buf), name));
+        }
 
         psp.dwSize = sizeof(psp);
         psp.dwFlags = PSP_USETITLE;
@@ -473,7 +489,7 @@ HRESULT shell_item_list::properties(CMINVOKECOMMANDINFO* pici) {
         psh.dwFlags = PSH_PROPSHEETPAGE;
         psh.hwndParent = pici->hwnd;
         psh.hInstance = psp.hInstance;
-        psh.pszCaption = L"test"; // FIXME
+        psh.pszCaption = (WCHAR*)caption.c_str();
         psh.nPages = 1;
         psh.ppsp = &psp;
 

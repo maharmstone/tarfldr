@@ -37,3 +37,4 @@
 #define IDS_ARCHIVE_ROOT               132
 #define IDS_TAR_DESC                   133
 #define IDS_TAR_COMP_DESC              134
+#define IDS_PROPSHEET_WINDOW           135
