@@ -326,7 +326,7 @@ tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item&
 
     switch (tar->type) {
         case archive_type::gzip: {
-            gzf = gzopen((char*)tar->archive_fn.u8string().c_str(), "r");
+            gzf = gzopen_w((wchar_t*)tar->archive_fn.u16string().c_str(), "r");
 
             if (!gzf)
                 throw formatted_error("Could not open gzip file {}.", tar->archive_fn.string());
