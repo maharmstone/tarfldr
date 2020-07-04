@@ -37,12 +37,12 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
 
         // FIXME - only show folders or non-folders as requested
 
-        while (celt > 0 && index < root->children.size()) {
-            *rgelt = root->children[index].make_pidl_child();
+        while (celt > 0 && it != root->children.end()) {
+            *rgelt = it->make_pidl_child();
 
             rgelt++;
             celt--;
-            index++;
+            it++;
 
             if (pceltFetched)
                 (*pceltFetched)++;
@@ -59,7 +59,7 @@ HRESULT shell_enum::Skip(ULONG celt) {
 }
 
 HRESULT shell_enum::Reset() {
-    index = 0;
+    it = root->children.begin();
 
     return S_OK;
 }

@@ -5,6 +5,7 @@
 #include <shobjidl.h>
 #include <string>
 #include <vector>
+#include <list>
 #include <stdexcept>
 #include <filesystem>
 #include <optional>
@@ -81,7 +82,7 @@ public:
     tar_item* parent;
     int64_t size;
     bool dir;
-    std::vector<tar_item> children;
+    std::list<tar_item> children;
     std::optional<time_t> mtime;
     mode_t mode;
 };
@@ -220,7 +221,8 @@ typedef struct {
 
 class shell_enum : public IEnumIDList {
 public:
-    shell_enum(const std::shared_ptr<tar_info>& tar, tar_item* root, SHCONTF flags): tar(tar), root(root), flags(flags) { }
+    shell_enum(const std::shared_ptr<tar_info>& tar, tar_item* root, SHCONTF flags) :
+        tar(tar), root(root), flags(flags), it(root->children.begin()) { }
 
     // IUnknown
 
@@ -240,7 +242,7 @@ private:
     std::shared_ptr<tar_info> tar;
     tar_item* root;
     LONG refcount = 0;
-    size_t index = 0;
+    decltype(root->children.begin()) it;
 };
 
 class shell_item_details {
