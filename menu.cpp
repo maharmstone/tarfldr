@@ -13,7 +13,7 @@ HRESULT shell_context_menu::QueryInterface(REFIID iid, void** ppv) {
     else if (iid == IID_IShellExtInit)
         *ppv = static_cast<IShellExtInit*>(this);
     else {
-        debug("shell_context_menu::QueryInterface: unsupported interface {}", iid);
+        debug("shell_context_menu::QueryInterface: unsupported interface {}\n", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -42,7 +42,7 @@ HRESULT shell_context_menu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT i
     MENUITEMINFOW mii;
     HMENU submenu = nullptr;
 
-    debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
+    debug("shell_context_menu::QueryContextMenu({}, {}, {}, {}, {:#x})\n", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
 
     if (!(uFlags & CMF_DEFAULTONLY)) {
@@ -668,7 +668,7 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
 
-    debug("shell_context_menu::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
+    debug("shell_context_menu::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})\n",
           pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((uintptr_t)pici->lpVerb) : pici->lpVerb,
           pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
           (void*)pici->hIcon);
@@ -694,7 +694,7 @@ HRESULT shell_context_menu::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
 }
 
 HRESULT shell_context_menu::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved, CHAR* pszName, UINT cchMax) {
-    debug("shell_context_menu::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
+    debug("shell_context_menu::GetCommandString({}, {}, {}, {}, {})\n", idCmd, uType,
           (void*)pReserved, (void*)pszName, cchMax);
 
     if (!IS_INTRESOURCE(idCmd)) {

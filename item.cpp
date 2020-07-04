@@ -51,21 +51,21 @@ HRESULT shell_item_list::QueryInterface(REFIID iid, void** ppv) {
         *ppv = static_cast<IDataObject*>(this);
     else {
         if (iid == IID_IStdMarshalInfo)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_IStdMarshalInfo");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IStdMarshalInfo\n");
         else if (iid == IID_INoMarshal)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_INoMarshal");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_INoMarshal\n");
         else if (iid == IID_IAgileObject)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_IAgileObject");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IAgileObject\n");
         else if (iid == IID_ICallFactory)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_ICallFactory");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_ICallFactory\n");
         else if (iid == IID_IExternalConnection)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_IExternalConnection");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IExternalConnection\n");
         else if (iid == IID_IMarshal)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_IMarshal");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IMarshal\n");
         else if (iid == IID_IDataObjectAsyncCapability)
-            debug("shell_item_list::QueryInterface: unsupported interface IID_IDataObjectAsyncCapability");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IDataObjectAsyncCapability\n");
         else
-            debug("shell_item_list::QueryInterface: unsupported interface {}", iid);
+            debug("shell_item_list::QueryInterface: unsupported interface {}\n", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -94,7 +94,7 @@ HRESULT shell_item_list::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCm
     UINT cmd = idCmdFirst;
     MENUITEMINFOW mii;
 
-    debug("shell_item_list::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
+    debug("shell_item_list::QueryContextMenu({}, {}, {}, {}, {:#x})\n", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
 
     span mi = menu_items;
@@ -507,7 +507,7 @@ HRESULT shell_item_list::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
 
-    debug("shell_item_list::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
+    debug("shell_item_list::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})\n",
           pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((uintptr_t)pici->lpVerb) : pici->lpVerb,
           pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
           (void*)pici->hIcon);
@@ -531,7 +531,7 @@ HRESULT shell_item_list::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
 
 HRESULT shell_item_list::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
                                           CHAR* pszName, UINT cchMax) {
-    debug("shell_item_list::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
+    debug("shell_item_list::GetCommandString({}, {}, {}, {}, {})\n", idCmd, uType,
           (void*)pReserved, (void*)pszName, cchMax);
 
     span mi = menu_items;
@@ -607,7 +607,7 @@ HRESULT shell_item_list::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
 
     GetClipboardFormatNameW(pformatetcIn->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item_list::GetData(pformatetcIn = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])",
+    debug("shell_item_list::GetData(pformatetcIn = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])\n",
           pformatetcIn->cfFormat, utf16_to_utf8(format), (void*)pformatetcIn->ptd, pformatetcIn->dwAspect,
           pformatetcIn->lindex, pformatetcIn->tymed, pmedium->tymed, pmedium->hGlobal);
 
@@ -768,7 +768,7 @@ HRESULT shell_item_list::QueryGetData(FORMATETC* pformatetc) {
 
     GetClipboardFormatNameW(pformatetc->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item_list::QueryGetData(cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})",
+    debug("shell_item_list::QueryGetData(cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})\n",
           pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
           pformatetc->lindex, pformatetc->tymed);
 
@@ -794,7 +794,7 @@ HRESULT shell_item_list::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINB
 
     GetClipboardFormatNameW(pformatetc->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item_list::SetData(pformatetc = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}], fRelease = {})",
+    debug("shell_item_list::SetData(pformatetc = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}], fRelease = {})\n",
           pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
           pformatetc->lindex, pformatetc->tymed, pmedium->tymed, pmedium->hGlobal, fRelease);
 
@@ -834,7 +834,7 @@ HRESULT shell_item_enum_format::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IEnumFORMATETC)
         *ppv = static_cast<IEnumFORMATETC*>(this);
     else {
-        debug("shell_item_enum_format::QueryInterface: unsupported interface {}", iid);
+        debug("shell_item_enum_format::QueryInterface: unsupported interface {}\n", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;

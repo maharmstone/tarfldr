@@ -28,7 +28,7 @@ extern const GUID FMTID_POSIXAttributes;
 
 extern HINSTANCE instance;
 
-#define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + std::string(" stub")).c_str()); return E_NOTIMPL;
+#define UNIMPLEMENTED OutputDebugStringA((__PRETTY_FUNCTION__ + std::string(" stub\n")).c_str()); return E_NOTIMPL;
 
 template<typename... Args>
 static void debug(const std::string_view& s, Args&&... args) { // FIXME - only if compiled in Debug mode

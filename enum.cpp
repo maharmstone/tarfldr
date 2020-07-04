@@ -6,7 +6,7 @@ HRESULT shell_enum::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IEnumIDList)
         *ppv = static_cast<IEnumIDList*>(this);
     else {
-        debug("shell_enum::QueryInterface: unsupported interface {}", iid);
+        debug("shell_enum::QueryInterface: unsupported interface {}\n", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;

@@ -589,7 +589,7 @@ HRESULT factory::CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** 
         }
     }
 
-    debug("factory::CreateInstance: unsupported interface {} on {}", iid, clsid);
+    debug("factory::CreateInstance: unsupported interface {} on {}\n", iid, clsid);
 
     *ppv = nullptr;
     return E_NOINTERFACE;

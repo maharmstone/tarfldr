@@ -22,7 +22,7 @@ HRESULT tar_item_stream::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_ISequentialStream || iid == IID_IStream)
         *ppv = static_cast<IStream*>(this);
     else {
-        debug("tar_item_stream::QueryInterface: unsupported interface {}", iid);
+        debug("tar_item_stream::QueryInterface: unsupported interface {}\n", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -230,7 +230,7 @@ HRESULT tar_item_stream::UnlockRegion(ULARGE_INTEGER libOffset, ULARGE_INTEGER c
 }
 
 HRESULT tar_item_stream::Stat(STATSTG* pstatstg, DWORD grfStatFlag) {
-    debug("tar_item_stream::Stat({}, {:#x})", (void*)pstatstg, grfStatFlag);
+    debug("tar_item_stream::Stat({}, {:#x})\n", (void*)pstatstg, grfStatFlag);
 
     if (!(grfStatFlag & STATFLAG_NONAME)) {
         auto name = utf8_to_utf16(item.name);
