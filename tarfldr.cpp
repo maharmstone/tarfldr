@@ -166,7 +166,26 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
         auto st = fn2.rfind(u".");
         auto orig_fn = fn2.substr(0, st);
         size_t size = 0;
-        optional<time_t> mtime = nullopt; // FIXME
+        optional<time_t> mtime;
+
+        {
+            FILETIME creation_time, access_time, write_time;
+            uint64_t file_time;
+            unique_handle h{CreateFileW((LPCWSTR)fn.u16string().c_str(), GENERIC_READ, 0, nullptr,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+            if (h.get() == INVALID_HANDLE_VALUE)
+                throw last_error("CreateFile", GetLastError());
+
+            if (!GetFileTime(h.get(), &creation_time, &access_time, &write_time))
+                throw last_error("GetFileTime", GetLastError());
+
+            file_time = (uint64_t)write_time.dwHighDateTime << 32;
+            file_time |= write_time.dwLowDateTime;
+
+            file_time /= 10000000;
+            mtime = file_time - 11644473600;
+        }
 
         if (type & archive_type::gzip) {
             LARGE_INTEGER li;
