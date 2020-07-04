@@ -648,7 +648,11 @@ HRESULT shell_item_list::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
                 return hr;
             }
 
-            pmedium->pUnkForRelease = static_cast<IUnknown*>(tis);
+            hr = tis->QueryInterface(IID_IUnknown, (void**)&pmedium->pUnkForRelease);
+            if (FAILED(hr)) {
+                delete tis;
+                return hr;
+            }
         } catch (...) {
             return E_FAIL;
         }
