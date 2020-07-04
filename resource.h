@@ -35,3 +35,5 @@
 #define IDC_POSIX_MODE                 130
 #define IDS_MULTIPLE                   131
 #define IDS_ARCHIVE_ROOT               132
+#define IDS_TAR_DESC                   133
+#define IDS_TAR_COMP_DESC              134

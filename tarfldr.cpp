@@ -1,4 +1,5 @@
 #include "tarfldr.h"
+#include "resource.h"
 
 using namespace std;
 
@@ -6,7 +7,10 @@ const GUID CLSID_TarFolder = { 0x95b57a60, 0xcb8e, 0x49fc, { 0x8d, 0x4c, 0xef, 0
 const GUID CLSID_TarContextMenu = { 0xa23f73ab, 0x6c42, 0x4689, {0xa6, 0xab, 0x30, 0x13, 0x0c, 0xe7, 0x2a, 0x90 } };
 
 static const array file_extensions = { u".tar", u".gz", u".bz2", u".xz", u".tgz", u".tbz2", u".txz" };
-static const array prog_ids = { make_tuple(u"TarFolder", 0), make_tuple(u"TarFolderCompressed", 1) }; // name, icon number
+static const array prog_ids = { // name, description, icon number
+    make_tuple(u"TarFolder", IDS_TAR_DESC, 0),
+    make_tuple(u"TarFolderCompressed", IDS_TAR_COMP_DESC, 1)
+};
 
 #define BLOCK_SIZE 20480
 
@@ -355,10 +359,14 @@ extern "C" HRESULT DllRegisterServer() {
 
         for (const auto& p : prog_ids) {
             const auto& prog_id = get<0>(p);
+            char16_t buf[256];
 
-            create_reg_key(HKEY_CLASSES_ROOT, prog_id);
+            if (LoadStringW(instance, get<1>(p), (WCHAR*)buf, sizeof(buf) / sizeof(char16_t)) <= 0)
+                return E_FAIL;
+
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id, buf);
             create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\CLSID"s, clsid);
-            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\DefaultIcon"s, file + u","s + utf8_to_utf16(to_string(get<1>(p))));
+            create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\DefaultIcon"s, file + u","s + utf8_to_utf16(to_string(get<2>(p))));
 
             create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\shell"s);
             create_reg_key(HKEY_CLASSES_ROOT, prog_id + u"\\shell\\Open"s);

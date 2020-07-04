@@ -28,6 +28,8 @@ STRINGTABLE
     IDS_PROPSHEET_TITLE "General"
     IDS_MULTIPLE		"(Multiple)"
     IDS_ARCHIVE_ROOT	"(archive root)"
+    IDS_TAR_DESC		"Archive"
+    IDS_TAR_COMP_DESC	"Compressed archive"
 }
 
 IDI_TAR_ICON ICON tar.ico
