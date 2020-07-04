@@ -529,7 +529,10 @@ SFGAOF tar_item::get_atts() const {
     } else
         atts |= SFGAO_STREAM;
 
-    // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, SFGAO_HIDDEN, etc.
+    if (name[0] == '.')
+        atts |= SFGAO_HIDDEN;
+
+    // FIXME - SFGAO_CANRENAME, SFGAO_CANDELETE, etc.
 
     return atts;
 }
