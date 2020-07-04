@@ -67,6 +67,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
 
             cb -= copy_size;
             *pcbRead += copy_size;
+            position += copy_size;
             pv = (uint8_t*)pv + copy_size;
         }
     }
@@ -87,6 +88,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
 
         memcpy(pv, readbuf, copy_size);
         *pcbRead += copy_size;
+        position += copy_size;
 
         if (size > cb)
             buf.append(string_view((char*)readbuf + cb, size - cb));
@@ -102,6 +104,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
                 throw formatted_error("gzread returned {}.", ret); // FIXME - use gzerror to get actual error
 
             *pcbRead = ret;
+            position += ret;
 
             break;
         }
@@ -113,6 +116,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
                 throw formatted_error("BZ2_bzread returned {}.", ret); // FIXME - use BZ2_bzerror to get actual error
 
             *pcbRead = ret;
+            position += ret;
 
             break;
         }
@@ -150,6 +154,7 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
 
                     pv = (uint8_t*)pv + copy_size;
                     *pcbRead += copy_size;
+                    position += copy_size;
 
                     if (read_size > cb)
                         buf.append(string_view(lzma_outbuf).substr(cb, read_size - cb));
@@ -206,7 +211,12 @@ HRESULT tar_item_stream::Write(const void* pv, ULONG cb, ULONG* pcbWritten) {
 HRESULT tar_item_stream::Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition) {
     debug("tar_item_stream::Seek({}, {}, {})\n", dlibMove.QuadPart, dwOrigin, (void*)plibNewPosition);
 
-    UNIMPLEMENTED; // FIXME
+    // FIXME - currently ignoring what we're told
+
+    if (plibNewPosition)
+        plibNewPosition->QuadPart = position;
+
+    return S_OK;
 }
 
 HRESULT tar_item_stream::SetSize(ULARGE_INTEGER libNewSize) {

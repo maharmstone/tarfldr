@@ -385,6 +385,7 @@ private:
     enum archive_type type;
     bool eof = false;
     int lzma_ret = LZMA_OK;
+    uint64_t position = 0;
 };
 
 class shell_context_menu;
