@@ -51,6 +51,8 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
     int64_t offset;
     const void* readbuf;
 
+    debug("tar_item_stream::Read({}, {}, {})\n", pv, cb, (void*)pcbRead);
+
     if (item.dir)
         return E_NOTIMPL;
 
@@ -202,6 +204,8 @@ HRESULT tar_item_stream::Write(const void* pv, ULONG cb, ULONG* pcbWritten) {
 }
 
 HRESULT tar_item_stream::Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition) {
+    debug("tar_item_stream::Seek({}, {}, {})\n", dlibMove.QuadPart, dwOrigin, (void*)plibNewPosition);
+
     UNIMPLEMENTED; // FIXME
 }
 
