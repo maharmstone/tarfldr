@@ -982,6 +982,9 @@ HRESULT shell_folder::InitializeEx(IBindCtx* pbc, PCIDLIST_ABSOLUTE pidlRoot, co
 
     tar.reset();
 
+    if (root_pidl)
+        ILFree(root_pidl);
+
     root_pidl = ILCloneFull(pidlRoot);
 
     return S_OK;
