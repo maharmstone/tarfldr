@@ -300,7 +300,7 @@ tar_item_stream::tar_item_stream(const std::shared_ptr<tar_info>& tar, tar_item&
             archive_read_support_filter_all(a);
             archive_read_support_format_all(a);
 
-            r = archive_read_open_filename(a, (char*)tar->archive_fn.u8string().c_str(), BLOCK_SIZE);
+            r = archive_read_open_filename_w(a, (wchar_t*)tar->archive_fn.u16string().c_str(), BLOCK_SIZE);
 
             if (r != ARCHIVE_OK)
                 throw runtime_error(archive_error_string(a));

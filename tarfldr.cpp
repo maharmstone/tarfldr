@@ -143,7 +143,7 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
             archive_read_support_filter_all(a);
             archive_read_support_format_all(a);
 
-            auto r = archive_read_open_filename(a, (char*)fn.u8string().c_str(), BLOCK_SIZE);
+            auto r = archive_read_open_filename_w(a, (wchar_t*)fn.u16string().c_str(), BLOCK_SIZE);
 
             if (r != ARCHIVE_OK)
                 throw runtime_error(archive_error_string(a));
