@@ -251,11 +251,11 @@ public:
     std::u16string relative_path;
 };
 
-class shell_item : public IContextMenu, public IDataObject {
+class shell_item_list : public IContextMenu, public IDataObject {
 public:
-    shell_item(PIDLIST_ABSOLUTE root_pidl, const std::shared_ptr<tar_info>& tar,
-               const std::vector<tar_item*>& itemlist, tar_item* root, bool recursive, shell_folder* folder);
-    virtual ~shell_item();
+    shell_item_list(PIDLIST_ABSOLUTE root_pidl, const std::shared_ptr<tar_info>& tar,
+                    const std::vector<tar_item*>& itemlist, tar_item* root, bool recursive, shell_folder* folder);
+    virtual ~shell_item_list();
 
     // IUnknown
 

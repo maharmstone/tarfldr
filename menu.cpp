@@ -123,7 +123,7 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
             ifo.reset(fo);
         }
 
-        vector<shell_item> shell_items;
+        vector<shell_item_list> shell_items;
 
         for (const auto& file : files) {
             if (get<1>(file) & archive_type::tarball) {
@@ -148,7 +148,7 @@ void shell_context_menu::extract_all(CMINVOKECOMMANDINFO* pici) {
 
             hr = si.QueryInterface(IID_IUnknown, (void**)&unk);
             if (FAILED(hr))
-                throw formatted_error("shell_item::QueryInterface returned {:08x}.", (uint32_t)hr);
+                throw formatted_error("shell_item_list::QueryInterface returned {:08x}.", (uint32_t)hr);
 
             hr = ifo->CopyItems(unk, dest.get());
             if (FAILED(hr))

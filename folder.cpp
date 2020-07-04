@@ -627,7 +627,7 @@ HRESULT shell_folder::GetUIObjectOf(HWND hwndOwner, UINT cidl, PCUITEMID_CHILD_A
                 itemlist.emplace_back(&get_item_from_pidl_child(apidl[i]));
             }
 
-            auto scm = new shell_item(root_pidl, tar, itemlist, root, true, this);
+            auto scm = new shell_item_list(root_pidl, tar, itemlist, root, true, this);
 
             return scm->QueryInterface(riid, ppv);
         } catch (const invalid_argument&) {

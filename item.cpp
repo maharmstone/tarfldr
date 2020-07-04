@@ -13,20 +13,20 @@ static const struct {
     unsigned int res_num;
     const char* verba;
     const char16_t* verbw;
-    function<HRESULT(shell_item*, CMINVOKECOMMANDINFO*)> cmd;
+    function<HRESULT(shell_item_list*, CMINVOKECOMMANDINFO*)> cmd;
 } menu_items[] = {
-    { IDS_OPEN, "open", u"open", &shell_item::open_cmd },
+    { IDS_OPEN, "open", u"open", &shell_item_list::open_cmd },
     { 0, nullptr, nullptr, nullptr },
-    { IDS_COPY, "copy", u"copy", &shell_item::copy_cmd },
+    { IDS_COPY, "copy", u"copy", &shell_item_list::copy_cmd },
     { 0, nullptr, nullptr, nullptr },
-    { IDS_PROPERTIES, "properties", u"properties", &shell_item::properties }
+    { IDS_PROPERTIES, "properties", u"properties", &shell_item_list::properties }
 };
 
 // FIXME - others: Extract, Cut, Paste, Properties
 
-shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
-                       const vector<tar_item*>& itemlist, tar_item* root, bool recursive, shell_folder* folder) :
-                       tar(tar), itemlist(itemlist), root(root), recursive(recursive), folder(folder) {
+shell_item_list::shell_item_list(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& tar,
+                                 const vector<tar_item*>& itemlist, tar_item* root, bool recursive, shell_folder* folder) :
+                                 tar(tar), itemlist(itemlist), root(root), recursive(recursive), folder(folder) {
     this->root_pidl = ILCloneFull(root_pidl);
     cf_shell_id_list = RegisterClipboardFormatW(CFSTR_SHELLIDLIST);
     cf_file_contents = RegisterClipboardFormatW(CFSTR_FILECONTENTS);
@@ -36,7 +36,7 @@ shell_item::shell_item(PIDLIST_ABSOLUTE root_pidl, const shared_ptr<tar_info>& t
         folder->AddRef();
 }
 
-shell_item::~shell_item() {
+shell_item_list::~shell_item_list() {
     if (root_pidl)
         ILFree(root_pidl);
 
@@ -44,28 +44,28 @@ shell_item::~shell_item() {
         folder->Release();
 }
 
-HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
+HRESULT shell_item_list::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown || iid == IID_IContextMenu)
         *ppv = static_cast<IContextMenu*>(this);
     else if (iid == IID_IDataObject)
         *ppv = static_cast<IDataObject*>(this);
     else {
         if (iid == IID_IStdMarshalInfo)
-            debug("shell_item::QueryInterface: unsupported interface IID_IStdMarshalInfo");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IStdMarshalInfo");
         else if (iid == IID_INoMarshal)
-            debug("shell_item::QueryInterface: unsupported interface IID_INoMarshal");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_INoMarshal");
         else if (iid == IID_IAgileObject)
-            debug("shell_item::QueryInterface: unsupported interface IID_IAgileObject");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IAgileObject");
         else if (iid == IID_ICallFactory)
-            debug("shell_item::QueryInterface: unsupported interface IID_ICallFactory");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_ICallFactory");
         else if (iid == IID_IExternalConnection)
-            debug("shell_item::QueryInterface: unsupported interface IID_IExternalConnection");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IExternalConnection");
         else if (iid == IID_IMarshal)
-            debug("shell_item::QueryInterface: unsupported interface IID_IMarshal");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IMarshal");
         else if (iid == IID_IDataObjectAsyncCapability)
-            debug("shell_item::QueryInterface: unsupported interface IID_IDataObjectAsyncCapability");
+            debug("shell_item_list::QueryInterface: unsupported interface IID_IDataObjectAsyncCapability");
         else
-            debug("shell_item::QueryInterface: unsupported interface {}", iid);
+            debug("shell_item_list::QueryInterface: unsupported interface {}", iid);
 
         *ppv = nullptr;
         return E_NOINTERFACE;
@@ -76,11 +76,11 @@ HRESULT shell_item::QueryInterface(REFIID iid, void** ppv) {
     return S_OK;
 }
 
-ULONG shell_item::AddRef() {
+ULONG shell_item_list::AddRef() {
     return InterlockedIncrement(&refcount);
 }
 
-ULONG shell_item::Release() {
+ULONG shell_item_list::Release() {
     LONG rc = InterlockedDecrement(&refcount);
 
     if (rc == 0)
@@ -89,12 +89,12 @@ ULONG shell_item::Release() {
     return rc;
 }
 
-HRESULT shell_item::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
-                                     UINT idCmdLast, UINT uFlags) {
+HRESULT shell_item_list::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
+                                          UINT idCmdLast, UINT uFlags) {
     UINT cmd = idCmdFirst;
     MENUITEMINFOW mii;
 
-    debug("shell_item::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
+    debug("shell_item_list::QueryContextMenu({}, {}, {}, {}, {:#x})", (void*)hmenu, indexMenu, idCmdFirst,
           idCmdLast, uFlags);
 
     span mi = menu_items;
@@ -137,7 +137,7 @@ static filesystem::path get_temp_file_name(const filesystem::path& dir, const u1
     return tmpfn;
 }
 
-HRESULT shell_item::open_cmd(CMINVOKECOMMANDINFO* pici) {
+HRESULT shell_item_list::open_cmd(CMINVOKECOMMANDINFO* pici) {
     for (auto item : itemlist) {
         if (item->dir) {
             SHELLEXECUTEINFOW sei;
@@ -197,7 +197,7 @@ HRESULT shell_item::open_cmd(CMINVOKECOMMANDINFO* pici) {
     return S_OK;
 }
 
-HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
+HRESULT shell_item_list::copy_cmd(CMINVOKECOMMANDINFO* pici) {
     HRESULT hr;
     IDataObject* dataobj;
 
@@ -212,7 +212,7 @@ HRESULT shell_item::copy_cmd(CMINVOKECOMMANDINFO* pici) {
     return S_OK;
 }
 
-u16string shell_item::get_item_prop(tar_item& item, const GUID& fmtid, DWORD pid) {
+u16string shell_item_list::get_item_prop(tar_item& item, const GUID& fmtid, DWORD pid) {
     HRESULT hr;
     u16string val;
     SHCOLUMNID scid;
@@ -265,7 +265,7 @@ static uint64_t calc_size_dir(const tar_item& item) {
     return size;
 }
 
-uint64_t shell_item::calc_size() {
+uint64_t shell_item_list::calc_size() {
     uint64_t size = 0;
 
     for (auto item : itemlist) {
@@ -278,7 +278,7 @@ uint64_t shell_item::calc_size() {
     return size;
 }
 
-INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR shell_item_list::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     try {
         switch (uMsg) {
             case WM_INITDIALOG: {
@@ -438,21 +438,21 @@ INT_PTR shell_item::PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 }
 
 static INT_PTR __stdcall PropSheetDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    shell_item* si;
+    shell_item_list* si;
 
     if (uMsg == WM_INITDIALOG) {
         auto psp = (PROPSHEETPAGE*)lParam;
 
-        si = (shell_item*)psp->lParam;
+        si = (shell_item_list*)psp->lParam;
 
         SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)si);
     } else
-        si = (shell_item*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+        si = (shell_item_list*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
 
     return si->PropSheetDlgProc(hwndDlg, uMsg, wParam, lParam);
 }
 
-HRESULT shell_item::properties(CMINVOKECOMMANDINFO* pici) {
+HRESULT shell_item_list::properties(CMINVOKECOMMANDINFO* pici) {
     try {
         PROPSHEETPAGEW psp;
         PROPSHEETHEADERW psh;
@@ -487,11 +487,11 @@ HRESULT shell_item::properties(CMINVOKECOMMANDINFO* pici) {
     }
 }
 
-HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
+HRESULT shell_item_list::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     if (!pici)
         return E_INVALIDARG;
 
-    debug("shell_item::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
+    debug("shell_item_list::InvokeCommand(cbSize = {}, fMask = {:#x}, hwnd = {}, lpVerb = {}, lpParameters = {}, lpDirectory = {}, nShow = {}, dwHotKey = {}, hIcon = {})",
           pici->cbSize, pici->fMask, (void*)pici->hwnd, IS_INTRESOURCE(pici->lpVerb) ? to_string((uintptr_t)pici->lpVerb) : pici->lpVerb,
           pici->lpParameters ? pici->lpParameters : "NULL", pici->lpDirectory ? pici->lpDirectory : "NULL", pici->nShow, pici->dwHotKey,
           (void*)pici->hIcon);
@@ -513,9 +513,9 @@ HRESULT shell_item::InvokeCommand(CMINVOKECOMMANDINFO* pici) {
     return E_INVALIDARG;
 }
 
-HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
-                                     CHAR* pszName, UINT cchMax) {
-    debug("shell_item::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
+HRESULT shell_item_list::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved,
+                                          CHAR* pszName, UINT cchMax) {
+    debug("shell_item_list::GetCommandString({}, {}, {}, {}, {})", idCmd, uType,
           (void*)pReserved, (void*)pszName, cchMax);
 
     span mi = menu_items;
@@ -559,7 +559,7 @@ HRESULT shell_item::GetCommandString(UINT_PTR idCmd, UINT uType, UINT* pReserved
     return E_INVALIDARG;
 }
 
-void shell_item::populate_full_itemlist2(tar_item* item, const u16string& prefix) {
+void shell_item_list::populate_full_itemlist2(tar_item* item, const u16string& prefix) {
     u16string name = (prefix.empty() ? u"" : (prefix + u"\\"s)) + utf8_to_utf16(item->name);
 
     full_itemlist.emplace_back(item, name);
@@ -569,7 +569,7 @@ void shell_item::populate_full_itemlist2(tar_item* item, const u16string& prefix
     }
 }
 
-void shell_item::populate_full_itemlist() {
+void shell_item_list::populate_full_itemlist() {
     if (!recursive) {
         for (auto item : itemlist) {
             full_itemlist.emplace_back(item, utf8_to_utf16(item->name));
@@ -583,7 +583,7 @@ void shell_item::populate_full_itemlist() {
     }
 }
 
-HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
+HRESULT shell_item_list::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
     char16_t format[256];
 
     if (!pformatetcIn || !pmedium)
@@ -591,7 +591,7 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
 
     GetClipboardFormatNameW(pformatetcIn->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item::GetData(pformatetcIn = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])",
+    debug("shell_item_list::GetData(pformatetcIn = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}])",
           pformatetcIn->cfFormat, utf16_to_utf8(format), (void*)pformatetcIn->ptd, pformatetcIn->dwAspect,
           pformatetcIn->lindex, pformatetcIn->tymed, pmedium->tymed, pmedium->hGlobal);
 
@@ -643,7 +643,7 @@ HRESULT shell_item::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
     return E_INVALIDARG;
 }
 
-HGLOBAL shell_item::make_shell_id_list() {
+HGLOBAL shell_item_list::make_shell_id_list() {
     HGLOBAL hg;
     CIDA* cida;
     size_t size, root_pidl_size;
@@ -696,7 +696,7 @@ HGLOBAL shell_item::make_shell_id_list() {
     return hg;
 }
 
-HGLOBAL shell_item::make_file_descriptor() {
+HGLOBAL shell_item_list::make_file_descriptor() {
     HGLOBAL hg;
     FILEGROUPDESCRIPTORW* fgd;
     FILEDESCRIPTORW* fd;
@@ -740,11 +740,11 @@ HGLOBAL shell_item::make_file_descriptor() {
     return hg;
 }
 
-HRESULT shell_item::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) {
+HRESULT shell_item_list::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium) {
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
+HRESULT shell_item_list::QueryGetData(FORMATETC* pformatetc) {
     char16_t format[256];
 
     if (!pformatetc)
@@ -752,7 +752,7 @@ HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
 
     GetClipboardFormatNameW(pformatetc->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item::QueryGetData(cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})",
+    debug("shell_item_list::QueryGetData(cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})",
           pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
           pformatetc->lindex, pformatetc->tymed);
 
@@ -766,11 +766,11 @@ HRESULT shell_item::QueryGetData(FORMATETC* pformatetc) {
     return DV_E_TYMED;
 }
 
-HRESULT shell_item::GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) {
+HRESULT shell_item_list::GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) {
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL fRelease) {
+HRESULT shell_item_list::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL fRelease) {
     char16_t format[256];
 
     if (!pformatetc || !pmedium)
@@ -778,14 +778,14 @@ HRESULT shell_item::SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, WINBOOL f
 
     GetClipboardFormatNameW(pformatetc->cfFormat, (WCHAR*)format, sizeof(format) / sizeof(char16_t));
 
-    debug("shell_item::SetData(pformatetc = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}], fRelease = {})",
+    debug("shell_item_list::SetData(pformatetc = [cfFormat = {} ({}), ptd = {}, dwAspect = {}, lindex = {}, tymed = {})], pmedium = [tymed = {}, hGlobal = {}], fRelease = {})",
           pformatetc->cfFormat, utf16_to_utf8(format), (void*)pformatetc->ptd, pformatetc->dwAspect,
           pformatetc->lindex, pformatetc->tymed, pmedium->tymed, pmedium->hGlobal, fRelease);
 
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) {
+HRESULT shell_item_list::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) {
     if (dwDirection == DATADIR_GET) {
         auto sief = new shell_item_enum_format(cf_shell_id_list, cf_file_contents, cf_file_descriptor);
 
@@ -795,15 +795,15 @@ HRESULT shell_item::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumForm
     return E_NOTIMPL;
 }
 
-HRESULT shell_item::DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink, DWORD* pdwConnection) {
+HRESULT shell_item_list::DAdvise(FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink, DWORD* pdwConnection) {
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_item::DUnadvise(DWORD dwConnection) {
+HRESULT shell_item_list::DUnadvise(DWORD dwConnection) {
     UNIMPLEMENTED; // FIXME
 }
 
-HRESULT shell_item::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
+HRESULT shell_item_list::EnumDAdvise(IEnumSTATDATA* *ppenumAdvise) {
     UNIMPLEMENTED; // FIXME
 }
 
