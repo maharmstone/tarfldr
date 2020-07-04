@@ -35,9 +35,19 @@ HRESULT shell_enum::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* pceltFetched) 
         if (pceltFetched)
             *pceltFetched = 0;
 
-        // FIXME - only show folders or non-folders as requested
+        // FIXME - SHCONTF_INCLUDEHIDDEN
 
         while (celt > 0 && it != root->children.end()) {
+            if (!(flags & SHCONTF_FOLDERS) && it->dir) {
+                it++;
+                continue;
+            }
+
+            if (!(flags & SHCONTF_NONFOLDERS) && !it->dir) {
+                it++;
+                continue;
+            }
+
             *rgelt = it->make_pidl_child();
 
             rgelt++;
