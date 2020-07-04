@@ -137,7 +137,7 @@ private:
     LONG refcount = 0;
 };
 
-class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IShellFolderViewCB, public IExplorerPaneVisibility {
+class shell_folder : public IShellFolder2, public IPersistFolder3, public IObjectWithFolderEnumMode, public IExplorerPaneVisibility {
 public:
     shell_folder() { }
     shell_folder(const std::shared_ptr<tar_info>& tar, tar_item* root, PCIDLIST_ABSOLUTE pidl);
@@ -184,10 +184,6 @@ public:
 
     HRESULT __stdcall SetMode(FOLDER_ENUM_MODE feMode);
     HRESULT __stdcall GetMode(FOLDER_ENUM_MODE *pfeMode);
-
-    // IShellFolderViewCB
-
-    HRESULT __stdcall MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     // IExplorerPaneVisibility
 

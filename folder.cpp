@@ -37,8 +37,6 @@ HRESULT shell_folder::QueryInterface(REFIID iid, void** ppv) {
         *ppv = static_cast<IPersistFolder3*>(this);
     else if (iid == IID_IObjectWithFolderEnumMode)
         *ppv = static_cast<IObjectWithFolderEnumMode*>(this);
-    else if (iid == IID_IShellFolderViewCB)
-        *ppv = static_cast<IShellFolderViewCB*>(this);
     else if (iid == IID_IExplorerPaneVisibility)
         *ppv = static_cast<IExplorerPaneVisibility*>(this);
     else {
@@ -515,8 +513,7 @@ HRESULT shell_folder::CreateViewObject(HWND hwndOwner, REFIID riid, void **ppv) 
         sfvc.cbSize = sizeof(sfvc);
         sfvc.pshf = static_cast<IShellFolder*>(this);
         sfvc.psvOuter = nullptr;
-
-        QueryInterface(IID_IShellFolderViewCB, (void**)&sfvc.psfvcb);
+        sfvc.psfvcb = nullptr;
 
         return SHCreateShellFolderView(&sfvc, (IShellView**)ppv);
     }
@@ -1011,12 +1008,6 @@ HRESULT shell_folder::GetMode(FOLDER_ENUM_MODE* pfeMode) {
     *pfeMode = folder_enum_mode;
 
     return S_OK;
-}
-
-HRESULT shell_folder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    debug("shell_folder::MessageSFVCB({}, {}, {})\n", uMsg, wParam, lParam);
-
-    UNIMPLEMENTED;
 }
 
 HRESULT shell_folder::GetPaneState(REFEXPLORERPANE ep, EXPLORERPANESTATE* peps) {

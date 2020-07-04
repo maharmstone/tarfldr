@@ -572,7 +572,7 @@ HRESULT factory::CreateInstance(IUnknown* pUnknownOuter, const IID& iid, void** 
     if (clsid == CLSID_TarFolder) {
         if (iid == IID_IUnknown || iid == IID_IShellFolder || iid == IID_IShellFolder2 ||
             iid == IID_IPersist || iid == IID_IPersistFolder || iid == IID_IPersistFolder2 || iid == IID_IPersistFolder3 ||
-            iid == IID_IObjectWithFolderEnumMode || iid == IID_IShellFolderViewCB) {
+            iid == IID_IObjectWithFolderEnumMode) {
             auto sf = new shell_folder;
             if (!sf)
                 return E_OUTOFMEMORY;
