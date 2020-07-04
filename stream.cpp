@@ -76,22 +76,27 @@ HRESULT tar_item_stream::Read(void* pv, ULONG cb, ULONG* pcbRead) {
         return S_OK;
 
     if (type & archive_type::tarball) {
-        auto r = archive_read_data_block(a, &readbuf, &size, &offset);
+        while (cb > 0) {
+            auto r = archive_read_data_block(a, &readbuf, &size, &offset);
 
-        if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
-            throw runtime_error(archive_error_string(a));
+            if (r != ARCHIVE_OK && r != ARCHIVE_EOF)
+                throw runtime_error(archive_error_string(a));
 
-        if (size == 0)
-            return S_OK;
+            if (size == 0)
+                return S_OK;
 
-        copy_size = min(size, (size_t)cb);
+            copy_size = min(size, (size_t)cb);
 
-        memcpy(pv, readbuf, copy_size);
-        *pcbRead += copy_size;
-        position += copy_size;
+            memcpy(pv, readbuf, copy_size);
+            pv = (uint8_t*)pv + copy_size;
+            *pcbRead += copy_size;
+            position += copy_size;
 
-        if (size > cb)
-            buf.append(string_view((char*)readbuf + cb, size - cb));
+            if (size > cb)
+                buf.append(string_view((char*)readbuf + cb, size - cb));
+
+            cb -= copy_size;
+        }
 
         return S_OK;
     }
