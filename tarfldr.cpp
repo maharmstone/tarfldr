@@ -119,16 +119,25 @@ enum archive_type identify_file_type(const u16string_view& fn2) {
         c = tolower(c);
     }
 
+    if (last_ext == u"tar")
+        return archive_type::tarball;
+    else if (last_ext == u"tgz")
+        return archive_type::tarball | archive_type::gzip;
+    else if (last_ext == u"tbz2")
+        return archive_type::tarball | archive_type::bz2;
+    else if (last_ext == u"txz")
+        return archive_type::tarball | archive_type::xz;
+
     if (last_ext == u"gz")
         type = archive_type::gzip;
     else if (last_ext == u"bz2")
         type = archive_type::bz2;
     else if (last_ext == u"xz")
         type = archive_type::xz;
-    else if (last_ext == u"tar")
-        type = archive_type::tarball;
+    else
+        return archive_type::unknown;
 
-    if (st != 0 && (type == archive_type::gzip || type == archive_type::bz2 || type == archive_type::xz)) {
+    if (st != 0) {
         auto st2 = fn2.rfind(u".", st - 1);
 
         if (st2 != string::npos) {

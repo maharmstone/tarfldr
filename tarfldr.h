@@ -126,6 +126,10 @@ static void operator|=(archive_type& a, const archive_type& b) {
     a = (archive_type)((int)a | (int)b);
 }
 
+static archive_type operator|(archive_type a, archive_type b) {
+    return (archive_type)((int)a | (int)b);
+}
+
 class tar_info {
 public:
     tar_info(const std::filesystem::path& fn);
