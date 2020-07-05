@@ -374,13 +374,14 @@ private:
     tar_item& item;
     std::string buf;
     gzFile gzf = nullptr;
-    BZFILE* bzf = nullptr;
     unique_handle h;
-    lzma_stream strm = LZMA_STREAM_INIT;
-    std::string lzma_inbuf, lzma_outbuf;
+    lzma_stream xz_strm = LZMA_STREAM_INIT;
+    bz_stream bz2_strm;
+    std::string inbuf, outbuf;
     enum archive_type type;
     bool eof = false;
     int lzma_ret = LZMA_OK;
+    int bz2_ret = BZ_OK;
     uint64_t position = 0;
 };
 
