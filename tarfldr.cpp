@@ -212,26 +212,60 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
 
             size = size2;
         } else if (type & archive_type::bz2) {
-            auto bzf = BZ2_bzopen((char*)fn.u8string().c_str(), "r");
+            int ret;
+            bz_stream strm;
+            char inbuf[4096], outbuf[4096];
+            bool eof = false;
 
-            if (!bzf)
-                throw formatted_error("Could not open bzip2 file {}.", fn.string());
+            unique_handle h{CreateFileW((LPCWSTR)fn.u16string().c_str(), GENERIC_READ, 0, nullptr,
+                                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
 
-            while (true) {
-                char buf[4096];
+            if (h.get() == INVALID_HANDLE_VALUE)
+                throw last_error("CreateFile", GetLastError());
 
-                auto ret = BZ2_bzread(bzf, buf, sizeof(buf));
+            strm.bzalloc = nullptr;
+            strm.bzfree = nullptr;
+            strm.opaque = nullptr;
 
-                if (ret <= 0)
-                    break;
+            ret = BZ2_bzDecompressInit(&strm, 0, 0);
+            if (ret != BZ_OK)
+                throw formatted_error("BZ2_bzDecompressInit returned {}.", ret);
 
-                size += ret;
-            }
+            strm.next_in = nullptr;
+            strm.avail_in = 0;
+            strm.next_out = outbuf;
+            strm.avail_out = sizeof(outbuf);
 
-            BZ2_bzclose(bzf);
+            do {
+                if (strm.avail_in == 0 && !eof) {
+                    DWORD read;
+
+                    strm.next_in = inbuf;
+
+                    if (!ReadFile(h.get(), inbuf, sizeof(inbuf), &read, nullptr))
+                        throw last_error("ReadFile", GetLastError());
+
+                    strm.avail_in = read;
+
+                    if (read == 0) // end of file
+                        eof = true;
+                }
+
+                ret = BZ2_bzDecompress(&strm);
+
+                if (ret != BZ_OK && ret != BZ_STREAM_END)
+                    throw formatted_error("BZ2_bzDecompress returned {}.", ret);
+
+                if (strm.avail_out == 0 || ret == BZ_STREAM_END)
+                    size += sizeof(outbuf) - strm.avail_out;
+
+                if (strm.avail_out == 0) {
+                    strm.next_out = outbuf;
+                    strm.avail_out = sizeof(outbuf);
+                }
+            } while (ret != BZ_STREAM_END);
         } else if (type & archive_type::xz) {
             uint8_t inbuf[4096], outbuf[4096];
-            DWORD read;
             bool eof = false;
 
             lzma_stream strm = LZMA_STREAM_INIT;
@@ -255,6 +289,8 @@ tar_info::tar_info(const filesystem::path& fn) : archive_fn(fn), root("", 0, tru
 
                 do {
                     if (strm.avail_in == 0 && !eof) {
+                        DWORD read;
+
                         strm.next_in = inbuf;
 
                         if (!ReadFile(h.get(), inbuf, sizeof(inbuf), &read, nullptr))
