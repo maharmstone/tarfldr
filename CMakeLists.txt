@@ -32,5 +32,9 @@ target_link_libraries(tarfldr libarchive.a libbz2.a libxml2.a libz.a liblzma.a)
 target_link_libraries(tarfldr ws2_32)
 target_link_options(tarfldr PUBLIC -static-libgcc)
 
-target_compile_options(tarfldr PUBLIC -gcodeview)
-target_link_options(tarfldr PUBLIC -gcodeview)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_definitions(-D_DEBUG)
+endif()
+
+# target_compile_options(tarfldr PUBLIC -gcodeview)
+# target_link_options(tarfldr PUBLIC -gcodeview)
