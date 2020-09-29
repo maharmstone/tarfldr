@@ -38,5 +38,5 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_definitions(-D_DEBUG)
 endif()
 
-# target_compile_options(tarfldr PUBLIC -gcodeview)
-# target_link_options(tarfldr PUBLIC -gcodeview)
+target_compile_options(tarfldr PUBLIC -gcodeview)
+target_link_options(tarfldr PUBLIC -gcodeview)
